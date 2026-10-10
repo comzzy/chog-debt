@@ -29,6 +29,16 @@ export default function DocsHome() {
             </a>
           </Reveal>
         ))}
+        <Reveal delay={140}>
+          <a href="/#app" className="hub-tile bg-lime">
+            <small>Ready?</small>
+            <h3>Open the app</h3>
+            <p>Pick your Chog and write your first IOU.</p>
+            <span className="arrow" aria-hidden="true">
+              →
+            </span>
+          </a>
+        </Reveal>
       </div>
     </article>
   );
