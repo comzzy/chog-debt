@@ -86,11 +86,11 @@ The Chog contract can't list the tokens in a wallet, so the app asks you which t
 
 The deploy script reads `CHOG_NFT` and `CHOG_TOKEN` (optional) from the environment. It doesn't read a private key itself. Foundry signs with whatever account you pass on the command line.
 
-The deployer wallet is `0x147D1285EdE460617E9CB9AA849E2290f1917c33`. Its key sits outside this repo, in a `cast wallet new --json` file (`.data.private_key`). Don't paste it anywhere. Import it once into Foundry's encrypted keystore, which asks you for a password:
+The deployer wallet is `0x147D1285EdE460617E9CB9AA849E2290f1917c33`. Its key sits outside this repo, in a `cast wallet new --json` file (`.data[0].private_key`). Don't paste it anywhere. Import it once into Foundry's encrypted keystore, which asks you for a password:
 
 ```sh
 cast wallet import chogdebt-deployer \
-  --private-key "$(jq -r '.data.private_key' /home/box/secrets/chogdebt-deployer.json)"
+  --private-key "$(jq -r '.data[0].private_key' /home/box/secrets/chogdebt-deployer.json)"
 ```
 
 Then fund the address with some MON and deploy (try testnet first):
