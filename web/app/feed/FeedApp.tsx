@@ -1,5 +1,5 @@
 "use client";
-import { PageHead, Shell } from "../Shell";
+import { EmptyState, PageHead, Shell } from "../Shell";
 import { useActivity } from "@/lib/activity";
 
 export function FeedList({ filter }: { filter?: bigint }) {
@@ -8,7 +8,7 @@ export function FeedList({ filter }: { filter?: bigint }) {
     <div>
       {loading && <p className="hint">Reading the chain…</p>}
       {error && <p className="err">{error}</p>}
-      {!loading && items.length === 0 && <p className="hint">Nothing in the recent blocks. Quiet day in Chog town.</p>}
+      {!loading && items.length === 0 && <EmptyState title="Quiet day in Chog town" line="Nothing happened in the recent blocks. New IOUs, repayments and defaults pop in here as they land." actions={[{ label: "Write an IOU", href: "/#app" }, { label: "How the feed works", href: "/docs/live-feed", ghost: true }]} />}
       {items.map((i) => (
         <div key={i.key} className="iou feed-item">
           <div style={{ fontSize: 24 }}>{i.emoji}</div>

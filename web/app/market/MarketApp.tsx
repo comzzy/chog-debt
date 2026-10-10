@@ -2,7 +2,7 @@
 import { useState } from "react";
 import { formatUnits, type Address } from "viem";
 import { useAccount, useReadContract } from "wagmi";
-import { PageHead, Shell } from "../Shell";
+import { EmptyState, PageHead, Shell } from "../Shell";
 import { ChogFace, STATUS, TxNote, fmtLeft, useTx, type IOU } from "../ChogApp";
 import { chogDebtAbi, erc20Abi } from "@/lib/abi";
 import { CHOG_TOKEN, DEBT_ADDRESS, IS_CONFIGURED } from "@/lib/config";
@@ -68,7 +68,7 @@ export default function MarketApp() {
       <div className="card bg-yellow">
         <p className="hint">Want to sell one? List it from your tab.</p>
         {isLoading && <p className="hint">Loading…</p>}
-        {!isLoading && rows.length === 0 && <p className="hint">No debts for sale right now.</p>}
+        {!isLoading && rows.length === 0 && <EmptyState title="No debts for sale yet" line="When a creditor lists an IOU it shows up here, and you can buy the right to collect it with $CHOG." actions={[{ label: "Go to my tab", href: "/#app" }, { label: "How the market works", href: "/docs/debt-market", ghost: true }]} />}
         {rows.map((r) => (
           <ListingRow key={r.id.toString()} {...r} />
         ))}

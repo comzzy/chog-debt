@@ -11,7 +11,7 @@ export function DocsShell({ children }: { children: ReactNode }) {
   const [open, setOpen] = useState(false);
   const current = DOCS.find((d) => path === `/docs/${d.slug}`);
   return (
-    <>
+    <div className="site">
       <Header />
       <div className="docs">
         <aside className={`docs-side ${open ? "open" : ""}`}>
@@ -40,6 +40,6 @@ export function DocsShell({ children }: { children: ReactNode }) {
         <main className="docs-main">{children}</main>
       </div>
       <Footer />
-    </>
+    </div>
   );
 }

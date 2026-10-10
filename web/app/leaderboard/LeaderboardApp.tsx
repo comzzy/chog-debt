@@ -1,6 +1,6 @@
 "use client";
 import { useReadContract } from "wagmi";
-import { PageHead, Shell } from "../Shell";
+import { EmptyState, PageHead, Shell } from "../Shell";
 import { ChogFace } from "../ChogApp";
 import { chogDebtAbi } from "@/lib/abi";
 import { DEBT_ADDRESS, IS_CONFIGURED } from "@/lib/config";
@@ -11,7 +11,7 @@ function Board({ title, rows, show, color }: { title: string; rows: Row[]; show:
   return (
     <div className={`card ${color}`}>
       <h3>{title}</h3>
-      {rows.length === 0 && <p className="hint">Nobody here yet.</p>}
+      {rows.length === 0 && <EmptyState title="Nobody here yet" line="Chogs show up once they write, owe or vouch for an IOU." actions={[{ label: "Get on the board", href: "/#app" }]} />}
       {rows.map((r, i) => (
         <a key={r.id.toString()} href={`/chog/${r.id}`} className="iou lb-row" style={{ color: "inherit", textDecoration: "none", alignItems: "center" }}>
           <b style={{ width: 28 }}>{i + 1}</b>

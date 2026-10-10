@@ -3,7 +3,7 @@ import { useParams } from "next/navigation";
 import { useState } from "react";
 import { formatUnits } from "viem";
 import { useReadContract } from "wagmi";
-import { PageHead, Shell } from "../../Shell";
+import { EmptyState, PageHead, Shell } from "../../Shell";
 import { STATUS, TrustCard, type IOU } from "../../ChogApp";
 import { FeedList } from "../../feed/FeedApp";
 import { chogDebtAbi } from "@/lib/abi";
@@ -47,7 +47,7 @@ export default function ReportApp() {
       <TrustCard id={id} />
       <div className="card bg-yellow">
         <h3>History</h3>
-        {rows.length === 0 && <p className="hint">No IOUs on record.</p>}
+        {rows.length === 0 && <EmptyState title="No IOUs on record" line="This Chog has a clean sheet: nothing owed, nothing given yet." actions={[{ label: "Write it an IOU", href: "/#app" }, { label: "Reading a report", href: "/docs/credit-report", ghost: true }]} />}
         {rows.map(({ id: iid, iou }) => (
           <div key={iid.toString()} className="iou">
             <div className="iou-body">

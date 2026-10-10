@@ -593,7 +593,7 @@ export default function ChogApp() {
   const { address, isConnected } = useAccount();
   const [mine, setMine] = useState<bigint>();
   return (
-    <>
+    <div className="site">
       <Header />
       <section className="hero">
         <div className="hero-main bg-lilac">
@@ -722,6 +722,6 @@ export default function ChogApp() {
         )}
       </main>
       <Footer />
-    </>
+    </div>
   );
 }

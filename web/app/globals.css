@@ -282,10 +282,26 @@ select { width: auto; margin: 0; }
 }
 
 /* ---------- home fixes */
-body { min-height: 100vh; display: flex; flex-direction: column; }
-body > * { flex-shrink: 0; }
-.wrap, .docs { flex: 1 0 auto; width: 100%; }
-.foot { margin-top: auto; }
+/* Sticky footer. RainbowKit wraps the page in its own div, so the body can't be the flex
+   container; every page renders inside .site instead, which owns the full screen height. */
+html, body { height: auto; min-height: 100%; }
+html { background: var(--lilac-l); }
+.site { min-height: 100vh; min-height: 100dvh; display: flex; flex-direction: column; }
+.site > * { flex-shrink: 0; }
+.site > .wrap, .site > .docs { flex: 1 0 auto; width: 100%; box-sizing: border-box; }
+.site > .foot { margin-top: auto; }
+.wrap { display: flex; flex-direction: column; padding-bottom: 40px; }
+.wrap > * { width: 100%; box-sizing: border-box; }
+.wrap > :last-child { flex-grow: 1; margin-bottom: 0; }
+.docs { padding-bottom: 40px; }
+.docs > main, .docs > article, .docs > div:last-child { min-width: 0; }
+
+.empty { display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; gap: 10px; min-height: 240px; padding: 28px 18px; margin-top: 12px; border: 3px dashed var(--ink); background: var(--lilac-xl); animation: rise .5s ease both; }
+.empty h4 { margin: 4px 0 0; font-size: 1.25rem; font-weight: 800; }
+.empty p { margin: 0; max-width: 420px; line-height: 1.5; }
+.empty-actions { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; margin-top: 8px; }
+.card .empty { min-height: 200px; }
+@media (max-width: 640px) { .empty { min-height: 200px; } .empty-actions .btn { flex: 1 1 100%; text-align: center; } }
 .hero h1 { font-size: clamp(36px, 4.6vw, 60px); font-weight: 800; letter-spacing: -1px; text-shadow: none; line-height: 1.08; }
 .hero h1 span { font-size: clamp(19px, 1.9vw, 26px); font-weight: 700; letter-spacing: 0; line-height: 1.35; margin-top: 14px; max-width: 560px; color: var(--lime); background: var(--ink); padding: 6px 12px; display: inline-block; }
 .hero-actions { display: flex; gap: 14px; flex-wrap: wrap; }
@@ -306,3 +322,6 @@ body > * { flex-shrink: 0; }
   .why-nft { grid-template-columns: 1fr; }
   .why-copy { border-right: 0; border-bottom: 3px solid var(--ink); }
 }
+.wrap > .card:last-child { display: flex; flex-direction: column; }
+.wrap > .card:last-child > .empty:last-child { flex: 1 1 auto; }
+.topbar nav a { white-space: nowrap; }

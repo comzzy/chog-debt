@@ -195,10 +195,29 @@ export function PageHead({ title, sub, color = "lilac" }: { title: ReactNode; su
 
 export function Shell({ children }: { children: ReactNode }) {
   return (
-    <>
+    <div className="site">
       <Header />
       <main className="wrap">{children}</main>
       <Footer />
-    </>
+    </div>
+  );
+}
+
+export function EmptyState({ title, line, actions }: { title: string; line: string; actions?: { label: string; href: string; ghost?: boolean }[] }) {
+  return (
+    <div className="empty">
+      <LogoMark size={44} />
+      <h4>{title}</h4>
+      <p>{line}</p>
+      {actions && (
+        <div className="empty-actions">
+          {actions.map((a) => (
+            <a key={a.href} href={a.href} className={`btn${a.ghost ? " ghost" : ""}`}>
+              {a.label}
+            </a>
+          ))}
+        </div>
+      )}
+    </div>
   );
 }
