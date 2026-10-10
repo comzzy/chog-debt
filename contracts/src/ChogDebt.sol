@@ -48,12 +48,40 @@ contract ChogDebt {
         bool deadbeat;
     }
 
+    struct Listing {
+        uint128 price; // in $CHOG
+        address seller; // holder of the creditor Chog when listed; listing goes stale if the Chog moves
+        bool active;
+    }
+
+    struct Guarantee {
+        uint256 guarantorId; // Chog vouching for the debtor
+        uint128 stake; // optional $CHOG paid to the creditor if the IOU defaults
+        bool active;
+    }
+
+    struct GuarantorRep {
+        uint32 vouches; // guarantees posted
+        uint32 honoured; // vouched IOUs that got repaid
+        uint32 failed; // vouched IOUs that defaulted
+    }
+
+    struct Streak {
+        uint32 current; // consecutive on-time repayments
+        uint32 best;
+        uint8 badges; // bitmask: BADGE_RELIABLE | BADGE_LEGEND (kept forever once earned)
+    }
+
     // ---------------------------------------------------------------- constants
 
     uint256 public constant MAX_MEMO_LENGTH = 140;
     uint64 public constant MIN_CALL_PERIOD = 1 hours;
     uint64 public constant MAX_CALL_PERIOD = 30 days;
     uint32 public constant REDEMPTION_REPAYS = 3;
+    uint32 public constant RELIABLE_STREAK = 3;
+    uint32 public constant LEGEND_STREAK = 10;
+    uint8 public constant BADGE_RELIABLE = 1;
+    uint8 public constant BADGE_LEGEND = 2;
 
     // ---------------------------------------------------------------- storage
 
@@ -69,6 +97,14 @@ contract ChogDebt {
     mapping(uint256 => Reputation) private _rep;
     mapping(uint256 => uint256[]) private _iousOf; // tokenId => IOU ids (as creditor or debtor)
 
+    mapping(uint256 => Listing) private _listings; // IOU id => listing
+    mapping(uint256 => Guarantee) private _guarantees; // IOU id => guarantee
+    mapping(uint256 => GuarantorRep) private _gRep; // tokenId => guarantor record
+    mapping(uint256 => Streak) private _streaks; // tokenId => streak
+    mapping(uint256 => uint256[]) private _vouchesOf; // guarantor tokenId => IOU ids
+    uint256[] private _participants; // every Chog that has touched the contract (for leaderboards)
+    mapping(uint256 => bool) private _seen;
+
     uint256 private _lock = 1;
 
     // ---------------------------------------------------------------- events
@@ -82,6 +118,14 @@ contract ChogDebt {
     event CollateralPaid(uint256 indexed id, address indexed to, uint256 amount);
     event DeadbeatMarked(uint256 indexed tokenId);
     event DeadbeatCleared(uint256 indexed tokenId);
+    event IOUListed(uint256 indexed id, uint256 indexed creditorId, uint256 price);
+    event IOUListingCancelled(uint256 indexed id);
+    event IOUSold(uint256 indexed id, uint256 indexed fromCreditorId, uint256 indexed toCreditorId, uint256 price, address seller, address buyer);
+    event Vouched(uint256 indexed id, uint256 indexed guarantorId, uint256 stake);
+    event VouchWithdrawn(uint256 indexed id, uint256 indexed guarantorId);
+    event VouchSettled(uint256 indexed id, uint256 indexed guarantorId, bool honoured, uint256 stake, address paidTo);
+    event StreakUpdated(uint256 indexed tokenId, uint32 current, uint32 best);
+    event BadgeEarned(uint256 indexed tokenId, uint8 badge);
     event OwnershipTransferStarted(address indexed previousOwner, address indexed newOwner);
     event OwnershipTransferred(address indexed previousOwner, address indexed newOwner);
     event Paused(bool paused);
@@ -103,6 +147,12 @@ contract ChogDebt {
     error IsPaused();
     error Reentrancy();
     error ZeroAddress();
+    error NotListed();
+    error ListingStale();
+    error BadPrice();
+    error BadBuyer();
+    error AlreadyVouched();
+    error BadGuarantor();
 
     // ---------------------------------------------------------------- modifiers
 
@@ -158,6 +208,8 @@ contract ChogDebt {
         });
         _iousOf[creditorId].push(id);
         _iousOf[debtorId].push(id);
+        _touch(creditorId);
+        _touch(debtorId);
         emit IOUCreated(id, creditorId, debtorId, chogAmount, memo);
     }
 
@@ -180,7 +232,7 @@ contract ChogDebt {
     }
 
     /// @notice Creditor withdraws, or debtor rejects, an IOU that hasn't been accepted.
-    function cancel(uint256 id) external {
+    function cancel(uint256 id) external nonReentrant {
         IOU storage iou = _get(id);
         _requireStatus(iou, Status.Pending);
         uint256 by;
@@ -189,6 +241,7 @@ contract ChogDebt {
         else revert NotChogOwner(iou.debtorId);
         iou.status = Status.Cancelled;
         emit IOUCancelled(id, by);
+        _refundGuarantee(id);
     }
 
     /// @notice Creditor calls the favour in. Debtor has `period` seconds to repay.
@@ -224,8 +277,12 @@ contract ChogDebt {
                 emit DeadbeatCleared(iou.debtorId);
             }
         }
+        bool onTime = s == Status.Active || block.timestamp <= iou.deadline;
+        _bumpStreak(iou.debtorId, onTime);
         emit IOURepaid(id, iou.debtorId, s == Status.CalledIn);
+        _clearListing(id);
         _payCreditor(id, iou);
+        _settleGuarantee(id, iou, true);
     }
 
     /// @notice Anyone can blow the whistle once a called-in IOU passes its deadline.
@@ -243,8 +300,98 @@ contract ChogDebt {
             d.deadbeat = true;
             emit DeadbeatMarked(iou.debtorId);
         }
+        _bumpStreak(iou.debtorId, false);
         emit IOUDefaulted(id, iou.debtorId, msg.sender);
+        _clearListing(id);
         _payCreditor(id, iou);
+        _settleGuarantee(id, iou, false);
+    }
+
+    // ---------------------------------------------------------------- debt trading
+
+    /// @notice Put an accepted IOU up for sale. Whoever buys it becomes the creditor Chog,
+    ///         including the right to call it in and any collateral at the end.
+    function listForSale(uint256 id, uint128 price) external whenNotPaused {
+        if (address(chogToken) == address(0)) revert TokenDisabled();
+        IOU storage iou = _get(id);
+        Status s = iou.status;
+        if (s != Status.Active && s != Status.CalledIn) revert WrongStatus(s);
+        _onlyHolder(iou.creditorId);
+        if (price == 0) revert BadPrice();
+        _listings[id] = Listing({price: price, seller: msg.sender, active: true});
+        emit IOUListed(id, iou.creditorId, price);
+    }
+
+    function cancelListing(uint256 id) external {
+        IOU storage iou = _get(id);
+        Listing storage l = _listings[id];
+        if (!l.active) revert NotListed();
+        // the lister, or whoever holds the creditor Chog now, can pull it
+        if (msg.sender != l.seller) _onlyHolder(iou.creditorId);
+        l.active = false;
+        emit IOUListingCancelled(id);
+    }
+
+    /// @notice Buy a listed IOU with $CHOG. `maxPrice` guards against the seller re-pricing under you.
+    function buyDebt(uint256 id, uint256 buyerChogId, uint256 maxPrice) external whenNotPaused nonReentrant {
+        IOU storage iou = _get(id);
+        Listing memory l = _listings[id];
+        if (!l.active) revert NotListed();
+        Status s = iou.status;
+        if (s != Status.Active && s != Status.CalledIn) revert WrongStatus(s);
+        if (chog.ownerOf(iou.creditorId) != l.seller) revert ListingStale();
+        if (l.price > maxPrice) revert BadPrice();
+        _onlyHolder(buyerChogId);
+        if (
+            buyerChogId == iou.debtorId || buyerChogId == iou.creditorId || msg.sender == l.seller
+                || chog.ownerOf(iou.debtorId) == msg.sender
+        ) revert BadBuyer();
+
+        uint256 from = iou.creditorId;
+        iou.creditorId = buyerChogId;
+        delete _listings[id];
+        _iousOf[buyerChogId].push(id);
+        _touch(buyerChogId);
+        emit IOUSold(id, from, buyerChogId, l.price, l.seller, msg.sender);
+        if (!chogToken.transferFrom(msg.sender, l.seller, l.price)) revert TransferFailed();
+    }
+
+    // ---------------------------------------------------------------- guarantors
+
+    /// @notice Vouch for the debtor on one IOU. Calling this is the guarantor holder agreeing to it.
+    ///         If the IOU defaults the guarantor's trust takes a hit and any staked $CHOG goes to the creditor.
+    function vouch(uint256 id, uint256 guarantorId, uint128 stake) external whenNotPaused nonReentrant {
+        IOU storage iou = _get(id);
+        Status s = iou.status;
+        if (s != Status.Pending && s != Status.Active && s != Status.CalledIn) revert WrongStatus(s);
+        if (_guarantees[id].active) revert AlreadyVouched();
+        _onlyHolder(guarantorId);
+        if (
+            guarantorId == iou.debtorId || guarantorId == iou.creditorId || chog.ownerOf(iou.debtorId) == msg.sender
+                || chog.ownerOf(iou.creditorId) == msg.sender
+        ) revert BadGuarantor();
+        if (stake > 0 && address(chogToken) == address(0)) revert TokenDisabled();
+
+        _guarantees[id] = Guarantee({guarantorId: guarantorId, stake: stake, active: true});
+        _gRep[guarantorId].vouches++;
+        _vouchesOf[guarantorId].push(id);
+        _touch(guarantorId);
+        emit Vouched(id, guarantorId, stake);
+        if (stake > 0) {
+            if (!chogToken.transferFrom(msg.sender, address(this), stake)) revert TransferFailed();
+        }
+    }
+
+    /// @notice A guarantor can back out only while the IOU is still pending.
+    function withdrawVouch(uint256 id) external nonReentrant {
+        IOU storage iou = _get(id);
+        _requireStatus(iou, Status.Pending);
+        Guarantee memory g = _guarantees[id];
+        if (!g.active) revert BadGuarantor();
+        _onlyHolder(g.guarantorId);
+        _gRep[g.guarantorId].vouches--;
+        emit VouchWithdrawn(id, g.guarantorId);
+        _refundGuarantee(id);
     }
 
     // ---------------------------------------------------------------- views
@@ -270,11 +417,104 @@ contract ChogDebt {
         return _rep[tokenId];
     }
 
+    function getListing(uint256 id) external view returns (Listing memory) {
+        return _listings[id];
+    }
+
+    /// @notice All IOUs currently for sale (stale listings, where the creditor Chog moved, are skipped).
+    function activeListings() external view returns (uint256[] memory ids, IOU[] memory list, Listing[] memory listings) {
+        uint256 n;
+        uint256 count = iouCount;
+        for (uint256 i = 1; i <= count; ++i) {
+            if (_isLive(i)) n++;
+        }
+        ids = new uint256[](n);
+        list = new IOU[](n);
+        listings = new Listing[](n);
+        uint256 k;
+        for (uint256 i = 1; i <= count; ++i) {
+            if (_isLive(i)) {
+                ids[k] = i;
+                list[k] = _ious[i];
+                listings[k] = _listings[i];
+                k++;
+            }
+        }
+    }
+
+    function getGuarantee(uint256 id) external view returns (Guarantee memory) {
+        return _guarantees[id];
+    }
+
+    function guarantorRepOf(uint256 tokenId) external view returns (GuarantorRep memory) {
+        return _gRep[tokenId];
+    }
+
+    function vouchesOf(uint256 tokenId) external view returns (uint256[] memory) {
+        return _vouchesOf[tokenId];
+    }
+
+    function streakOf(uint256 tokenId) external view returns (Streak memory) {
+        return _streaks[tokenId];
+    }
+
+    function hasBadge(uint256 tokenId, uint8 badge) external view returns (bool) {
+        return _streaks[tokenId].badges & badge != 0;
+    }
+
+    /// @notice Highest streak badge ever earned: 0 none, 1 Reliable, 2 Legend.
+    function streakTier(uint256 tokenId) external view returns (uint8 tier, string memory name) {
+        uint8 b = _streaks[tokenId].badges;
+        if (b & BADGE_LEGEND != 0) return (2, "Legend");
+        if (b & BADGE_RELIABLE != 0) return (1, "Reliable");
+        return (0, "");
+    }
+
+    function participantCount() external view returns (uint256) {
+        return _participants.length;
+    }
+
+    /// @notice Paged list of Chogs that have used the contract, with their scores. Feeds the leaderboard.
+    function participants(uint256 offset, uint256 limit)
+        external
+        view
+        returns (uint256[] memory ids, uint256[] memory scores, bool[] memory deadbeats, uint32[] memory defaults)
+    {
+        uint256 total = _participants.length;
+        uint256 end = offset + limit > total ? total : offset + limit;
+        uint256 n = end > offset ? end - offset : 0;
+        ids = new uint256[](n);
+        scores = new uint256[](n);
+        deadbeats = new bool[](n);
+        defaults = new uint32[](n);
+        for (uint256 i; i < n; ++i) {
+            uint256 t = _participants[offset + i];
+            ids[i] = t;
+            scores[i] = trustScore(t);
+            deadbeats[i] = _rep[t].deadbeat;
+            defaults[i] = _rep[t].defaulted;
+        }
+    }
+
+    /// @notice Everything a credit report page needs in one call.
+    function creditReport(uint256 tokenId)
+        external
+        view
+        returns (uint256 score, Reputation memory rep, GuarantorRep memory gRep, Streak memory streak, uint256 iouTotal)
+    {
+        return (trustScore(tokenId), _rep[tokenId], _gRep[tokenId], _streaks[tokenId], _iousOf[tokenId].length);
+    }
+
     /// @notice 0-100. Everyone starts at 50. Repaying and helping push it up, defaulting hurts a lot.
     function trustScore(uint256 tokenId) public view returns (uint256) {
         Reputation memory r = _rep[tokenId];
+        GuarantorRep memory g = _gRep[tokenId];
+        uint8 b = _streaks[tokenId].badges;
         int256 score = 50 + int256(uint256(r.repaid)) * 8 + int256(uint256(r.repaidAfterCall)) * 2
-            + int256(uint256(r.favoursGiven)) * 3 - int256(uint256(r.defaulted)) * 25;
+            + int256(uint256(r.favoursGiven)) * 3 - int256(uint256(r.defaulted)) * 25
+            + int256(uint256(g.honoured)) * 2 - int256(uint256(g.failed)) * 15;
+        if (b & BADGE_RELIABLE != 0) score += 5;
+        if (b & BADGE_LEGEND != 0) score += 10;
         if (r.deadbeat) score -= 10;
         if (score < 0) return 0;
         if (score > 100) return 100;
@@ -313,6 +553,75 @@ contract ChogDebt {
 
     function _onlyHolder(uint256 tokenId) private view {
         if (chog.ownerOf(tokenId) != msg.sender) revert NotChogOwner(tokenId);
+    }
+
+    function _touch(uint256 tokenId) private {
+        if (!_seen[tokenId]) {
+            _seen[tokenId] = true;
+            _participants.push(tokenId);
+        }
+    }
+
+    function _isLive(uint256 id) private view returns (bool) {
+        Listing memory l = _listings[id];
+        if (!l.active) return false;
+        Status s = _ious[id].status;
+        if (s != Status.Active && s != Status.CalledIn) return false;
+        return chog.ownerOf(_ious[id].creditorId) == l.seller;
+    }
+
+    function _clearListing(uint256 id) private {
+        if (_listings[id].active) {
+            delete _listings[id];
+            emit IOUListingCancelled(id);
+        }
+    }
+
+    function _bumpStreak(uint256 tokenId, bool onTime) private {
+        Streak storage st = _streaks[tokenId];
+        if (!onTime) {
+            st.current = 0;
+        } else {
+            st.current++;
+            if (st.current > st.best) st.best = st.current;
+            if (st.current >= RELIABLE_STREAK && st.badges & BADGE_RELIABLE == 0) {
+                st.badges |= BADGE_RELIABLE;
+                emit BadgeEarned(tokenId, BADGE_RELIABLE);
+            }
+            if (st.current >= LEGEND_STREAK && st.badges & BADGE_LEGEND == 0) {
+                st.badges |= BADGE_LEGEND;
+                emit BadgeEarned(tokenId, BADGE_LEGEND);
+            }
+        }
+        emit StreakUpdated(tokenId, st.current, st.best);
+    }
+
+    function _refundGuarantee(uint256 id) private {
+        Guarantee memory g = _guarantees[id];
+        if (!g.active) return;
+        delete _guarantees[id];
+        if (g.stake > 0) {
+            address to = chog.ownerOf(g.guarantorId);
+            if (!chogToken.transfer(to, g.stake)) revert TransferFailed();
+        }
+    }
+
+    function _settleGuarantee(uint256 id, IOU storage iou, bool honoured) private {
+        Guarantee memory g = _guarantees[id];
+        if (!g.active) return;
+        delete _guarantees[id];
+        address to;
+        if (honoured) {
+            _gRep[g.guarantorId].honoured++;
+            to = chog.ownerOf(g.guarantorId);
+        } else {
+            _gRep[g.guarantorId].failed++;
+            to = chog.ownerOf(iou.creditorId);
+        }
+        emit VouchSettled(id, g.guarantorId, honoured, g.stake, to);
+        if (g.stake > 0) {
+            if (!chogToken.transfer(to, g.stake)) revert TransferFailed();
+        }
     }
 
     function _payCreditor(uint256 id, IOU storage iou) private {

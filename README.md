@@ -16,6 +16,14 @@ I built it for Chogathon 2026 on Monad.
 
 Paying back three debts after a default washes off the stamp. The default itself stays in the history.
 
+### v2 extras
+
+- **Selling debts.** If your Chog is owed a favour you can list the IOU for a price in $CHOG. Another Chog holder buys it, their Chog becomes the creditor (call-in rights and any locked collateral included), and the $CHOG goes to you. You can unlist any time. If you sell the Chog itself, the listing goes stale and can't be bought.
+- **Vouching.** A third Chog can back someone's IOU, optionally with some $CHOG. If the debt is repaid the stake comes back and the guarantor gets a little trust boost. If it defaults the stake goes to the creditor and the guarantor loses 15 trust. A vouch can only be pulled while the IOU is still waiting to be accepted.
+- **Streaks.** Repaying on time (before any deadline) builds a streak. 3 in a row earns "Reliable", 10 earns "Legend". Paying late or defaulting resets the streak, but badges you've earned stay.
+
+The website also has a leaderboard (most trusted and worst deadbeats), a shareable credit report at `/chog/<id>`, a debt market at `/market` and a live feed at `/feed` built from contract events.
+
 ### Trust score
 
 Every Chog starts at 50 and it's clamped to 0-100:
@@ -23,6 +31,8 @@ Every Chog starts at 50 and it's clamped to 0-100:
 - +8 for each debt repaid, +2 more if it was repaid after being called in
 - +3 for each favour you gave that got accepted
 - -25 for each default, and -10 while the deadbeat stamp is on
+- +2 for each vouch that worked out, -15 for each one that blew up
+- +5 for the Reliable badge, +10 more for Legend
 
 The app also hands out badges like "Good for it", "Helpful Chog", "Pays under pressure" and "Redeemed".
 
@@ -37,7 +47,7 @@ The app also hands out badges like "Good for it", "Helpful Chog", "Pays under pr
 
 - Chog Genesis NFT (ERC-721, 1969 supply): `0xc96d31F8626c6D03Fae5dCD3d61e3FB9F4a73763`. I took this from mint.chog.xyz and checked it onchain.
 - $CHOG token: `0x350035555E10d9AfAF1566AaebfCeD5BA6C27777`
-- ChogDebt: not deployed yet
+- ChogDebt v1: `0x5591bb48433e82d653cb663082c21de087b4d41b` (v2 with trading, vouching and streaks is not deployed yet)
 
 Monad RPCs: mainnet `https://rpc.monad.xyz` (chain 143), testnet `https://testnet-rpc.monad.xyz` (chain 10143).
 
@@ -102,6 +112,10 @@ export CHOG_TOKEN=0x350035555E10d9AfAF1566AaebfCeD5BA6C27777
 forge script script/Deploy.s.sol --rpc-url https://testnet-rpc.monad.xyz \
   --account chogdebt-deployer --sender 0x147D1285EdE460617E9CB9AA849E2290f1917c33 --broadcast
 ```
+
+A dry run of v2 against mainnet estimated about 5.5M gas. Monad charges for the gas limit, so budget roughly 0.6 MON at 100-ish gwei, plus headroom.
+
+For the live feed, set `NEXT_PUBLIC_DEPLOY_BLOCK` to the deploy block. The public RPC only returns logs for 100 blocks per call, so the feed scans back `NEXT_PUBLIC_FEED_LOOKBACK_BLOCKS` (default 3000, about 15 minutes) and then listens for new events.
 
 Real Chogs only exist on mainnet. On testnet you'll need to deploy a test ERC-721 (and ERC-20) and point `CHOG_NFT` / `CHOG_TOKEN` at those.
 

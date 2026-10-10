@@ -18,6 +18,45 @@ export const chogDebtAbi = [
   },
   {
     "type": "function",
+    "name": "BADGE_LEGEND",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint8",
+        "internalType": "uint8"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "BADGE_RELIABLE",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint8",
+        "internalType": "uint8"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "LEGEND_STREAK",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint32",
+        "internalType": "uint32"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
     "name": "MAX_CALL_PERIOD",
     "inputs": [],
     "outputs": [
@@ -70,6 +109,19 @@ export const chogDebtAbi = [
   },
   {
     "type": "function",
+    "name": "RELIABLE_STREAK",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint32",
+        "internalType": "uint32"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
     "name": "accept",
     "inputs": [
       {
@@ -85,6 +137,106 @@ export const chogDebtAbi = [
     "type": "function",
     "name": "acceptOwnership",
     "inputs": [],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "activeListings",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "ids",
+        "type": "uint256[]",
+        "internalType": "uint256[]"
+      },
+      {
+        "name": "list",
+        "type": "tuple[]",
+        "internalType": "struct ChogDebt.IOU[]",
+        "components": [
+          {
+            "name": "creditorId",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "debtorId",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "chogAmount",
+            "type": "uint128",
+            "internalType": "uint128"
+          },
+          {
+            "name": "createdAt",
+            "type": "uint64",
+            "internalType": "uint64"
+          },
+          {
+            "name": "deadline",
+            "type": "uint64",
+            "internalType": "uint64"
+          },
+          {
+            "name": "status",
+            "type": "uint8",
+            "internalType": "enum ChogDebt.Status"
+          },
+          {
+            "name": "memo",
+            "type": "string",
+            "internalType": "string"
+          }
+        ]
+      },
+      {
+        "name": "listings",
+        "type": "tuple[]",
+        "internalType": "struct ChogDebt.Listing[]",
+        "components": [
+          {
+            "name": "price",
+            "type": "uint128",
+            "internalType": "uint128"
+          },
+          {
+            "name": "seller",
+            "type": "address",
+            "internalType": "address"
+          },
+          {
+            "name": "active",
+            "type": "bool",
+            "internalType": "bool"
+          }
+        ]
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "buyDebt",
+    "inputs": [
+      {
+        "name": "id",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "buyerChogId",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "maxPrice",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
     "outputs": [],
     "stateMutability": "nonpayable"
   },
@@ -109,6 +261,19 @@ export const chogDebtAbi = [
   {
     "type": "function",
     "name": "cancel",
+    "inputs": [
+      {
+        "name": "id",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "cancelListing",
     "inputs": [
       {
         "name": "id",
@@ -181,6 +346,157 @@ export const chogDebtAbi = [
   },
   {
     "type": "function",
+    "name": "creditReport",
+    "inputs": [
+      {
+        "name": "tokenId",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "score",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "rep",
+        "type": "tuple",
+        "internalType": "struct ChogDebt.Reputation",
+        "components": [
+          {
+            "name": "favoursGiven",
+            "type": "uint32",
+            "internalType": "uint32"
+          },
+          {
+            "name": "favoursReceived",
+            "type": "uint32",
+            "internalType": "uint32"
+          },
+          {
+            "name": "repaid",
+            "type": "uint32",
+            "internalType": "uint32"
+          },
+          {
+            "name": "repaidAfterCall",
+            "type": "uint32",
+            "internalType": "uint32"
+          },
+          {
+            "name": "defaulted",
+            "type": "uint32",
+            "internalType": "uint32"
+          },
+          {
+            "name": "open",
+            "type": "uint32",
+            "internalType": "uint32"
+          },
+          {
+            "name": "redemption",
+            "type": "uint32",
+            "internalType": "uint32"
+          },
+          {
+            "name": "deadbeat",
+            "type": "bool",
+            "internalType": "bool"
+          }
+        ]
+      },
+      {
+        "name": "gRep",
+        "type": "tuple",
+        "internalType": "struct ChogDebt.GuarantorRep",
+        "components": [
+          {
+            "name": "vouches",
+            "type": "uint32",
+            "internalType": "uint32"
+          },
+          {
+            "name": "honoured",
+            "type": "uint32",
+            "internalType": "uint32"
+          },
+          {
+            "name": "failed",
+            "type": "uint32",
+            "internalType": "uint32"
+          }
+        ]
+      },
+      {
+        "name": "streak",
+        "type": "tuple",
+        "internalType": "struct ChogDebt.Streak",
+        "components": [
+          {
+            "name": "current",
+            "type": "uint32",
+            "internalType": "uint32"
+          },
+          {
+            "name": "best",
+            "type": "uint32",
+            "internalType": "uint32"
+          },
+          {
+            "name": "badges",
+            "type": "uint8",
+            "internalType": "uint8"
+          }
+        ]
+      },
+      {
+        "name": "iouTotal",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "getGuarantee",
+    "inputs": [
+      {
+        "name": "id",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "tuple",
+        "internalType": "struct ChogDebt.Guarantee",
+        "components": [
+          {
+            "name": "guarantorId",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "stake",
+            "type": "uint128",
+            "internalType": "uint128"
+          },
+          {
+            "name": "active",
+            "type": "bool",
+            "internalType": "bool"
+          }
+        ]
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
     "name": "getIOU",
     "inputs": [
       {
@@ -231,6 +547,102 @@ export const chogDebtAbi = [
             "internalType": "string"
           }
         ]
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "getListing",
+    "inputs": [
+      {
+        "name": "id",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "tuple",
+        "internalType": "struct ChogDebt.Listing",
+        "components": [
+          {
+            "name": "price",
+            "type": "uint128",
+            "internalType": "uint128"
+          },
+          {
+            "name": "seller",
+            "type": "address",
+            "internalType": "address"
+          },
+          {
+            "name": "active",
+            "type": "bool",
+            "internalType": "bool"
+          }
+        ]
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "guarantorRepOf",
+    "inputs": [
+      {
+        "name": "tokenId",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "tuple",
+        "internalType": "struct ChogDebt.GuarantorRep",
+        "components": [
+          {
+            "name": "vouches",
+            "type": "uint32",
+            "internalType": "uint32"
+          },
+          {
+            "name": "honoured",
+            "type": "uint32",
+            "internalType": "uint32"
+          },
+          {
+            "name": "failed",
+            "type": "uint32",
+            "internalType": "uint32"
+          }
+        ]
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "hasBadge",
+    "inputs": [
+      {
+        "name": "tokenId",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "badge",
+        "type": "uint8",
+        "internalType": "uint8"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "bool",
+        "internalType": "bool"
       }
     ],
     "stateMutability": "view"
@@ -330,6 +742,24 @@ export const chogDebtAbi = [
   },
   {
     "type": "function",
+    "name": "listForSale",
+    "inputs": [
+      {
+        "name": "id",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "price",
+        "type": "uint128",
+        "internalType": "uint128"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
     "name": "markDefault",
     "inputs": [
       {
@@ -350,6 +780,58 @@ export const chogDebtAbi = [
         "name": "",
         "type": "address",
         "internalType": "address"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "participantCount",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "participants",
+    "inputs": [
+      {
+        "name": "offset",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "limit",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "ids",
+        "type": "uint256[]",
+        "internalType": "uint256[]"
+      },
+      {
+        "name": "scores",
+        "type": "uint256[]",
+        "internalType": "uint256[]"
+      },
+      {
+        "name": "deadbeats",
+        "type": "bool[]",
+        "internalType": "bool[]"
+      },
+      {
+        "name": "defaults",
+        "type": "uint32[]",
+        "internalType": "uint32[]"
       }
     ],
     "stateMutability": "view"
@@ -469,6 +951,66 @@ export const chogDebtAbi = [
   },
   {
     "type": "function",
+    "name": "streakOf",
+    "inputs": [
+      {
+        "name": "tokenId",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "tuple",
+        "internalType": "struct ChogDebt.Streak",
+        "components": [
+          {
+            "name": "current",
+            "type": "uint32",
+            "internalType": "uint32"
+          },
+          {
+            "name": "best",
+            "type": "uint32",
+            "internalType": "uint32"
+          },
+          {
+            "name": "badges",
+            "type": "uint8",
+            "internalType": "uint8"
+          }
+        ]
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "streakTier",
+    "inputs": [
+      {
+        "name": "tokenId",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "tier",
+        "type": "uint8",
+        "internalType": "uint8"
+      },
+      {
+        "name": "name",
+        "type": "string",
+        "internalType": "string"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
     "name": "transferOwnership",
     "inputs": [
       {
@@ -498,6 +1040,80 @@ export const chogDebtAbi = [
       }
     ],
     "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "vouch",
+    "inputs": [
+      {
+        "name": "id",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "guarantorId",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "stake",
+        "type": "uint128",
+        "internalType": "uint128"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "vouchesOf",
+    "inputs": [
+      {
+        "name": "tokenId",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256[]",
+        "internalType": "uint256[]"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "withdrawVouch",
+    "inputs": [
+      {
+        "name": "id",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "event",
+    "name": "BadgeEarned",
+    "inputs": [
+      {
+        "name": "tokenId",
+        "type": "uint256",
+        "indexed": true,
+        "internalType": "uint256"
+      },
+      {
+        "name": "badge",
+        "type": "uint8",
+        "indexed": false,
+        "internalType": "uint8"
+      }
+    ],
+    "anonymous": false
   },
   {
     "type": "event",
@@ -683,6 +1299,44 @@ export const chogDebtAbi = [
   },
   {
     "type": "event",
+    "name": "IOUListed",
+    "inputs": [
+      {
+        "name": "id",
+        "type": "uint256",
+        "indexed": true,
+        "internalType": "uint256"
+      },
+      {
+        "name": "creditorId",
+        "type": "uint256",
+        "indexed": true,
+        "internalType": "uint256"
+      },
+      {
+        "name": "price",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "IOUListingCancelled",
+    "inputs": [
+      {
+        "name": "id",
+        "type": "uint256",
+        "indexed": true,
+        "internalType": "uint256"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
     "name": "IOURepaid",
     "inputs": [
       {
@@ -702,6 +1356,49 @@ export const chogDebtAbi = [
         "type": "bool",
         "indexed": false,
         "internalType": "bool"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "IOUSold",
+    "inputs": [
+      {
+        "name": "id",
+        "type": "uint256",
+        "indexed": true,
+        "internalType": "uint256"
+      },
+      {
+        "name": "fromCreditorId",
+        "type": "uint256",
+        "indexed": true,
+        "internalType": "uint256"
+      },
+      {
+        "name": "toCreditorId",
+        "type": "uint256",
+        "indexed": true,
+        "internalType": "uint256"
+      },
+      {
+        "name": "price",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      },
+      {
+        "name": "seller",
+        "type": "address",
+        "indexed": false,
+        "internalType": "address"
+      },
+      {
+        "name": "buyer",
+        "type": "address",
+        "indexed": false,
+        "internalType": "address"
       }
     ],
     "anonymous": false
@@ -758,6 +1455,127 @@ export const chogDebtAbi = [
     "anonymous": false
   },
   {
+    "type": "event",
+    "name": "StreakUpdated",
+    "inputs": [
+      {
+        "name": "tokenId",
+        "type": "uint256",
+        "indexed": true,
+        "internalType": "uint256"
+      },
+      {
+        "name": "current",
+        "type": "uint32",
+        "indexed": false,
+        "internalType": "uint32"
+      },
+      {
+        "name": "best",
+        "type": "uint32",
+        "indexed": false,
+        "internalType": "uint32"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "VouchSettled",
+    "inputs": [
+      {
+        "name": "id",
+        "type": "uint256",
+        "indexed": true,
+        "internalType": "uint256"
+      },
+      {
+        "name": "guarantorId",
+        "type": "uint256",
+        "indexed": true,
+        "internalType": "uint256"
+      },
+      {
+        "name": "honoured",
+        "type": "bool",
+        "indexed": false,
+        "internalType": "bool"
+      },
+      {
+        "name": "stake",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      },
+      {
+        "name": "paidTo",
+        "type": "address",
+        "indexed": false,
+        "internalType": "address"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "VouchWithdrawn",
+    "inputs": [
+      {
+        "name": "id",
+        "type": "uint256",
+        "indexed": true,
+        "internalType": "uint256"
+      },
+      {
+        "name": "guarantorId",
+        "type": "uint256",
+        "indexed": true,
+        "internalType": "uint256"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "Vouched",
+    "inputs": [
+      {
+        "name": "id",
+        "type": "uint256",
+        "indexed": true,
+        "internalType": "uint256"
+      },
+      {
+        "name": "guarantorId",
+        "type": "uint256",
+        "indexed": true,
+        "internalType": "uint256"
+      },
+      {
+        "name": "stake",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "error",
+    "name": "AlreadyVouched",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "BadBuyer",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "BadGuarantor",
+    "inputs": []
+  },
+  {
     "type": "error",
     "name": "BadMemo",
     "inputs": []
@@ -765,6 +1583,11 @@ export const chogDebtAbi = [
   {
     "type": "error",
     "name": "BadPeriod",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "BadPrice",
     "inputs": []
   },
   {
@@ -779,6 +1602,11 @@ export const chogDebtAbi = [
   },
   {
     "type": "error",
+    "name": "ListingStale",
+    "inputs": []
+  },
+  {
+    "type": "error",
     "name": "NotChogOwner",
     "inputs": [
       {
@@ -787,6 +1615,11 @@ export const chogDebtAbi = [
         "internalType": "uint256"
       }
     ]
+  },
+  {
+    "type": "error",
+    "name": "NotListed",
+    "inputs": []
   },
   {
     "type": "error",

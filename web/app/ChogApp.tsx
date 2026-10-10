@@ -6,10 +6,10 @@ import { useAccount, useReadContract, useReadContracts, useWaitForTransactionRec
 import { chogDebtAbi, erc20Abi, erc721Abi } from "@/lib/abi";
 import { CHOG_NFT, CHOG_TOKEN, DEBT_ADDRESS, IS_CONFIGURED, chain } from "@/lib/config";
 
-const STATUS = ["None", "Waiting for them", "Owed", "Called in!", "Repaid", "Defaulted", "Cancelled"] as const;
+export const STATUS = ["None", "Waiting for them", "Owed", "Called in!", "Repaid", "Defaulted", "Cancelled"] as const;
 const STATUS_CLASS = ["", "pending", "active", "called", "repaid", "defaulted", "cancelled"];
 
-type IOU = {
+export type IOU = {
   creditorId: bigint;
   debtorId: bigint;
   chogAmount: bigint;
@@ -55,7 +55,7 @@ function useChogImage(id?: bigint) {
   return img;
 }
 
-function ChogFace({ id, size = 72 }: { id: bigint; size?: number }) {
+export function ChogFace({ id, size = 72 }: { id: bigint; size?: number }) {
   const img = useChogImage(id);
   return (
     <div className="face" style={{ width: size, height: size }}>
@@ -78,16 +78,20 @@ function badges(r: Rep, score: number) {
   return b;
 }
 
-function TrustCard({ id }: { id: bigint }) {
+export function TrustCard({ id }: { id: bigint }) {
   const { data } = useReadContracts({
     contracts: [
       { address: DEBT_ADDRESS, abi: chogDebtAbi, functionName: "reputationOf", args: [id] },
       { address: DEBT_ADDRESS, abi: chogDebtAbi, functionName: "trustScore", args: [id] },
+      { address: DEBT_ADDRESS, abi: chogDebtAbi, functionName: "streakOf", args: [id] },
+      { address: DEBT_ADDRESS, abi: chogDebtAbi, functionName: "guarantorRepOf", args: [id] },
     ],
     query: { enabled: IS_CONFIGURED, refetchInterval: 8000 },
   });
   const r = data?.[0]?.result as Rep | undefined;
   const score = Number((data?.[1]?.result as bigint | undefined) ?? 50n);
+  const streak = data?.[2]?.result as { current: number; best: number; badges: number } | undefined;
+  const gRep = data?.[3]?.result as { vouches: number; honoured: number; failed: number } | undefined;
   const rep: Rep = r ?? { favoursGiven: 0, favoursReceived: 0, repaid: 0, repaidAfterCall: 0, defaulted: 0, open: 0, redemption: 0, deadbeat: false };
   const mood = rep.deadbeat ? "sus" : score >= 75 ? "trusted" : score >= 40 ? "ok" : "shaky";
   return (
@@ -115,12 +119,17 @@ function TrustCard({ id }: { id: bigint }) {
         <Stat n={rep.defaulted} l="defaulted" />
       </div>
       <div className="badges">
+        {streak && streak.badges & 2 ? <span className="badge">🏆 Legend</span> : streak && streak.badges & 1 ? <span className="badge">🔥 Reliable</span> : null}
         {badges(rep, score).map((b) => (
           <span key={b.t} className={`badge ${b.t === "Deadbeat" ? "bad" : ""}`}>
             {b.e} {b.t}
           </span>
         ))}
       </div>
+      <p className="hint">
+        Streak: {streak?.current ?? 0} on-time in a row (best {streak?.best ?? 0}) · Vouched {gRep?.vouches ?? 0}, honoured {gRep?.honoured ?? 0}, burned{" "}
+        {gRep?.failed ?? 0} · <a href={`/chog/${id}`}>credit report</a>
+      </p>
       {rep.deadbeat && (
         <p className="hint">
           Redemption arc: repay {3 - rep.redemption} more debt{3 - rep.redemption === 1 ? "" : "s"} to wash off the mark.
@@ -139,7 +148,7 @@ function Stat({ n, l }: { n: number; l: string }) {
   );
 }
 
-function useTx() {
+export function useTx() {
   const { writeContractAsync, isPending } = useWriteContract();
   const [hash, setHash] = useState<`0x${string}`>();
   const [err, setErr] = useState<string>();
@@ -155,7 +164,7 @@ function useTx() {
   return { send, busy: isPending || receipt.isLoading, done: receipt.isSuccess, err, hash };
 }
 
-function TxNote({ tx }: { tx: ReturnType<typeof useTx> }) {
+export function TxNote({ tx }: { tx: ReturnType<typeof useTx> }) {
   if (tx.err) return <p className="err">😿 {tx.err}</p>;
   if (tx.busy) return <p className="hint">Chog is scribbling it onchain…</p>;
   if (tx.done && tx.hash)
@@ -210,7 +219,45 @@ function CreateIOU({ myId }: { myId: bigint }) {
   );
 }
 
-function fmtLeft(deadline: bigint) {
+function VouchCard({ myId }: { myId: bigint }) {
+  const { address } = useAccount();
+  const [iouId, setIouId] = useState("");
+  const [stake, setStake] = useState("");
+  const tx = useTx();
+  const amt = stake ? parseUnits(stake, 18) : 0n;
+  const { data: allowance } = useReadContract({
+    address: CHOG_TOKEN,
+    abi: erc20Abi,
+    functionName: "allowance",
+    args: address ? [address, DEBT_ADDRESS] : undefined,
+    query: { enabled: !!address && amt > 0n, refetchInterval: 6000 },
+  });
+  const ok = /^\d+$/.test(iouId);
+  return (
+    <div className="card">
+      <h3>🛡️ Vouch for a Chog</h3>
+      <p className="hint">Back someone else's IOU with Chog #{myId.toString()}. If they default, your trust takes a hit and your stake goes to the creditor.</p>
+      <label>
+        IOU number
+        <input value={iouId} onChange={(e) => setIouId(e.target.value.trim())} placeholder="e.g. 12" />
+      </label>
+      <label>
+        Optional $CHOG stake
+        <input value={stake} onChange={(e) => setStake(e.target.value)} placeholder="0" />
+      </label>
+      {amt > 0n && (allowance ?? 0n) < amt ? (
+        <button onClick={() => tx.send({ address: CHOG_TOKEN, abi: erc20Abi, functionName: "approve", args: [DEBT_ADDRESS, amt] })}>Approve $CHOG</button>
+      ) : (
+        <button disabled={!ok || tx.busy} onClick={() => tx.send({ address: DEBT_ADDRESS, abi: chogDebtAbi, functionName: "vouch", args: [BigInt(iouId), myId, amt] })}>
+          I vouch for them
+        </button>
+      )}
+      <TxNote tx={tx} />
+    </div>
+  );
+}
+
+export function fmtLeft(deadline: bigint) {
   const s = Number(deadline) - Math.floor(Date.now() / 1000);
   if (s <= 0) return "deadline passed";
   const h = Math.floor(s / 3600);
@@ -221,6 +268,16 @@ function IOURow({ id, iou, mine }: { id: bigint; iou: IOU; mine: bigint }) {
   const { address } = useAccount();
   const tx = useTx();
   const [days, setDays] = useState("3");
+  const [price, setPrice] = useState("");
+  const { data: extra } = useReadContracts({
+    contracts: [
+      { address: DEBT_ADDRESS, abi: chogDebtAbi, functionName: "getListing", args: [id] },
+      { address: DEBT_ADDRESS, abi: chogDebtAbi, functionName: "getGuarantee", args: [id] },
+    ],
+    query: { refetchInterval: 8000 },
+  });
+  const listing = extra?.[0]?.result as { price: bigint; seller: Address; active: boolean } | undefined;
+  const guarantee = extra?.[1]?.result as { guarantorId: bigint; stake: bigint; active: boolean } | undefined;
   const iAmCreditor = iou.creditorId === mine;
   const other = iAmCreditor ? iou.debtorId : iou.creditorId;
   const { data: allowance } = useReadContract({
@@ -248,6 +305,14 @@ function IOURow({ id, iou, mine }: { id: bigint; iou: IOU; mine: bigint }) {
           IOU #{id.toString()}
           {iou.chogAmount > 0n && <> · 🔒 {formatUnits(iou.chogAmount, 18)} $CHOG</>}
           {iou.status === 3 && <> · ⏳ {fmtLeft(iou.deadline)}</>}
+          {guarantee?.active && (
+            <>
+              {" "}
+              · 🛡️ vouched by #{guarantee.guarantorId.toString()}
+              {guarantee.stake > 0n && <> ({formatUnits(guarantee.stake, 18)} $CHOG)</>}
+            </>
+          )}
+          {listing?.active && <> · 🏷️ for sale at {formatUnits(listing.price, 18)} $CHOG</>}
         </div>
         <div className="actions">
           {iou.status === 1 && !iAmCreditor && (
@@ -285,6 +350,23 @@ function IOURow({ id, iou, mine }: { id: bigint; iou: IOU; mine: bigint }) {
                 Call it in 📣
               </button>
             </>
+          )}
+          {(iou.status === 2 || iou.status === 3) && iAmCreditor && !listing?.active && (
+            <>
+              <input style={{ width: 90 }} value={price} onChange={(e) => setPrice(e.target.value)} placeholder="$CHOG" />
+              <button
+                className="ghost"
+                disabled={!price || Number(price) <= 0}
+                onClick={() => tx.send({ address: DEBT_ADDRESS, abi: chogDebtAbi, functionName: "listForSale", args: [id, parseUnits(price, 18)] })}
+              >
+                Sell this debt 🏷️
+              </button>
+            </>
+          )}
+          {listing?.active && iAmCreditor && (
+            <button className="ghost" onClick={() => tx.send({ address: DEBT_ADDRESS, abi: chogDebtAbi, functionName: "cancelListing", args: [id] })}>
+              Unlist
+            </button>
           )}
           {overdue && (
             <button className="danger" onClick={() => call("markDefault")}>
@@ -395,6 +477,9 @@ export default function ChogApp() {
         <div className="logo">
           Chog<span>Debt</span>
         </div>
+        <nav className="hint">
+          <a href="/">Home</a> · <a href="/market">Debt market</a> · <a href="/leaderboard">Leaderboard</a> · <a href="/feed">Live feed</a>
+        </nav>
         <ConnectButton chainStatus="icon" showBalance={false} />
       </header>
 
@@ -420,6 +505,7 @@ export default function ChogApp() {
                 <CreateIOU myId={mine} />
               </div>
               <Ledger myId={mine} />
+              <VouchCard myId={mine} />
             </>
           ) : (
             <p className="hint center">Pick a Chog to see its tab.</p>
