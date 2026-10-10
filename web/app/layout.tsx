@@ -3,8 +3,8 @@ import "./globals.css";
 import { Providers } from "./providers";
 
 export const metadata: Metadata = {
-  title: "Chog Debt - your Chog never forgets",
-  description: "Favours between Chog holders, written onchain against the Chog itself.",
+  title: "ChogDebt: favours between Chogs",
+  description: "Write favours as IOUs between Chog NFTs. Trust scores, deadbeat marks and a debt market on Monad.",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

@@ -1,9 +1,11 @@
 "use client";
 import { ConnectButton } from "@rainbow-me/rainbowkit";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { SFX_FOR, play } from "@/lib/sfx";
 import { formatUnits, parseUnits, type Address } from "viem";
 import { useAccount, useReadContract, useReadContracts, useWaitForTransactionReceipt, useWriteContract } from "wagmi";
 import { chogDebtAbi, erc20Abi, erc721Abi } from "@/lib/abi";
+import { Footer, FlowerField, Header, Reveal } from "./Shell";
 import { CHOG_NFT, CHOG_TOKEN, DEBT_ADDRESS, IS_CONFIGURED, chain } from "@/lib/config";
 
 export const STATUS = ["None", "Waiting for them", "Owed", "Called in!", "Repaid", "Defaulted", "Cancelled"] as const;
@@ -95,7 +97,7 @@ export function TrustCard({ id }: { id: bigint }) {
   const rep: Rep = r ?? { favoursGiven: 0, favoursReceived: 0, repaid: 0, repaidAfterCall: 0, defaulted: 0, open: 0, redemption: 0, deadbeat: false };
   const mood = rep.deadbeat ? "sus" : score >= 75 ? "trusted" : score >= 40 ? "ok" : "shaky";
   return (
-    <div className={`card trust ${rep.deadbeat ? "deadbeat" : ""}`}>
+    <div className={`card trust ${rep.deadbeat ? "deadbeat" : mood === "trusted" ? "bg-lime" : "bg-yellow"}`}>
       <div className="trust-head">
         <div className="face-wrap">
           <ChogFace id={id} size={110} />
@@ -104,11 +106,11 @@ export function TrustCard({ id }: { id: bigint }) {
         <div>
           <h2>Chog #{id.toString()}</h2>
           <div className={`score ${mood}`}>
-            {score}
+            <CountUp value={score} />
             <small>/100 trust</small>
           </div>
           <div className="bar">
-            <div style={{ width: `${score}%` }} />
+            <div key={score} style={{ width: `${score}%` }} />
           </div>
         </div>
       </div>
@@ -139,6 +141,24 @@ export function TrustCard({ id }: { id: bigint }) {
   );
 }
 
+function CountUp({ value }: { value: number }) {
+  const [n, setN] = useState(0);
+  useEffect(() => {
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return setN(value);
+    let raf = 0;
+    const start = performance.now();
+    const from = 0;
+    const tick = (t: number) => {
+      const p = Math.min(1, (t - start) / 900);
+      setN(Math.round(from + (value - from) * (1 - Math.pow(1 - p, 3))));
+      if (p < 1) raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [value]);
+  return <>{n}</>;
+}
+
 function Stat({ n, l }: { n: number; l: string }) {
   return (
     <div className="stat">
@@ -153,8 +173,13 @@ export function useTx() {
   const [hash, setHash] = useState<`0x${string}`>();
   const [err, setErr] = useState<string>();
   const receipt = useWaitForTransactionReceipt({ hash });
+  const fn = useRef<string>("");
+  useEffect(() => {
+    if (receipt.isSuccess) play(receipt.data?.status === "reverted" ? "womp" : (SFX_FOR[fn.current] ?? "pop"));
+  }, [receipt.isSuccess, receipt.data]);
   const send = async (args: Parameters<typeof writeContractAsync>[0]) => {
     setErr(undefined);
+    fn.current = String(args.functionName);
     try {
       setHash(await writeContractAsync(args));
     } catch (e) {
@@ -186,7 +211,7 @@ function CreateIOU({ myId }: { myId: bigint }) {
   const tx = useTx();
   const valid = /^\d+$/.test(debtor) && BigInt(debtor) !== myId && memo.trim().length > 0 && memo.length <= 140;
   return (
-    <div className="card">
+    <div className="card bg-lime">
       <h3>✍️ Write an IOU</h3>
       <p className="hint">You helped another Chog? Put it on their tab. They have to accept it before it counts.</p>
       <label>
@@ -234,7 +259,7 @@ function VouchCard({ myId }: { myId: bigint }) {
   });
   const ok = /^\d+$/.test(iouId);
   return (
-    <div className="card">
+    <div className="card bg-lilac">
       <h3>🛡️ Vouch for a Chog</h3>
       <p className="hint">Back someone else's IOU with Chog #{myId.toString()}. If they default, your trust takes a hit and your stake goes to the creditor.</p>
       <label>
@@ -394,14 +419,14 @@ function Ledger({ myId }: { myId: bigint }) {
   const iOwe = rows.filter((r) => r.iou.debtorId === myId);
   return (
     <div className="ledger">
-      <div className="card">
+      <div className="card bg-yellow">
         <h3>📥 Chogs that owe you</h3>
         {owedToMe.length === 0 && <p className="hint">Nobody owes you yet. Go help someone.</p>}
         {owedToMe.map((r) => (
           <IOURow key={r.id.toString()} {...r} mine={myId} />
         ))}
       </div>
-      <div className="card">
+      <div className="card bg-lilac">
         <h3>📤 What you owe</h3>
         {iOwe.length === 0 && <p className="hint">Clean slate. Nice.</p>}
         {iOwe.map((r) => (
@@ -428,7 +453,7 @@ function ChogPicker({ owner, selected, onPick }: { owner: Address; selected?: bi
     localStorage.setItem(key, JSON.stringify(next));
   };
   return (
-    <div className="card">
+    <div className="card bg-yellow">
       <h3>🐾 Your Chogs {bal !== undefined && <small>({bal.toString()} in this wallet)</small>}</h3>
       <p className="hint">The Chog collection isn't enumerable, so tell me which token IDs are yours. I'll check onchain.</p>
       <div className="row">
@@ -460,7 +485,7 @@ function Lookup() {
   const [q, setQ] = useState("");
   const id = useMemo(() => (/^\d+$/.test(q) ? BigInt(q) : undefined), [q]);
   return (
-    <div className="card">
+    <div className="card bg-lime">
       <h3>🔍 Check a Chog before you help them</h3>
       <input value={q} onChange={(e) => setQ(e.target.value.trim())} placeholder="any Chog token ID" />
       {id !== undefined && <TrustCard id={id} />}
@@ -468,52 +493,200 @@ function Lookup() {
   );
 }
 
+const STEPS = [
+  { c: "yellow", icon: "note", t: "Write it down", d: "You helped another Chog. Put it on their tab." },
+  { c: "lime", icon: "hand", t: "They say yes", d: "They accept the IOU. Now it counts." },
+  { c: "lilac", icon: "bell", t: "Call it in", d: "Need the favour back? Set a deadline." },
+  { c: "pink2", icon: "heart", t: "Pay up", d: "Repay on time and your trust score climbs." },
+  { c: "lime", icon: "skull", t: "Or get stamped", d: "Miss the deadline and your Chog wears DEADBEAT." },
+  { c: "yellow", icon: "tag", t: "Sell or vouch", d: "Trade debts for $CHOG, or back a friend's word." },
+];
+
+export function Icon({ name, size = 56 }: { name: string; size?: number }) {
+  const s = { width: size, height: size };
+  switch (name) {
+    case "heart":
+      return (
+        <svg {...s} viewBox="0 0 60 60" aria-hidden="true">
+          <path d="M30 52 8 30a12 12 0 0 1 22-14 12 12 0 0 1 22 14z" fill="#E59CFF" stroke="#111" strokeWidth="2.5" />
+        </svg>
+      );
+    case "daisy":
+      return (
+        <svg {...s} viewBox="0 0 60 60" aria-hidden="true">
+          {[0, 45, 90, 135, 180, 225, 270, 315].map((r) => (
+            <ellipse key={r} cx="30" cy="12" rx="7" ry="10" fill="#fff" stroke="#111" strokeWidth="2" transform={`rotate(${r} 30 30)`} />
+          ))}
+          <circle cx="30" cy="30" r="11" fill="#FFC93C" stroke="#111" strokeWidth="2" />
+          <circle cx="26" cy="28" r="1.6" fill="#111" />
+          <circle cx="34" cy="28" r="1.6" fill="#111" />
+          <path d="M25 33q5 5 10 0" fill="none" stroke="#111" strokeWidth="2" strokeLinecap="round" />
+        </svg>
+      );
+    case "note":
+      return (
+        <svg {...s} viewBox="0 0 60 60" aria-hidden="true">
+          <path d="M12 8h26l10 10v34H12z" fill="#fff" stroke="#111" strokeWidth="2.5" />
+          <path d="M38 8v10h10" fill="none" stroke="#111" strokeWidth="2.5" />
+          <path d="M19 28h22M19 36h22M19 44h12" stroke="#111" strokeWidth="2.5" strokeLinecap="round" />
+        </svg>
+      );
+    case "hand":
+      return (
+        <svg {...s} viewBox="0 0 60 60" aria-hidden="true">
+          <path d="M6 30l12-12 10 4 8-4 18 12-14 14H24z" fill="#FFE08A" stroke="#111" strokeWidth="2.5" strokeLinejoin="round" />
+          <path d="M28 22l-6 8a3 3 0 0 0 5 3l6-5 10 9" fill="none" stroke="#111" strokeWidth="2.5" strokeLinejoin="round" />
+        </svg>
+      );
+    case "bell":
+      return (
+        <svg {...s} viewBox="0 0 60 60" aria-hidden="true">
+          <path d="M14 42h32l-4-6V26a12 12 0 0 0-24 0v10z" fill="#FFE08A" stroke="#111" strokeWidth="2.5" strokeLinejoin="round" />
+          <circle cx="30" cy="48" r="4" fill="#111" />
+        </svg>
+      );
+    case "skull":
+      return (
+        <svg {...s} viewBox="0 0 60 60" aria-hidden="true">
+          <path d="M30 8c-12 0-20 8-20 19 0 7 4 11 8 13v8h24v-8c4-2 8-6 8-13 0-11-8-19-20-19z" fill="#fff" stroke="#111" strokeWidth="2.5" />
+          <circle cx="22" cy="28" r="5" fill="#111" />
+          <circle cx="38" cy="28" r="5" fill="#111" />
+          <path d="M26 48v-5M34 48v-5" stroke="#111" strokeWidth="2.5" />
+        </svg>
+      );
+    case "tag":
+      return (
+        <svg {...s} viewBox="0 0 60 60" aria-hidden="true">
+          <path d="M8 30V10h20l24 24-18 18z" fill="#FF80C8" stroke="#111" strokeWidth="2.5" strokeLinejoin="round" />
+          <circle cx="19" cy="20" r="4" fill="#fff" stroke="#111" strokeWidth="2.5" />
+        </svg>
+      );
+    default:
+      return null;
+  }
+}
+
 export default function ChogApp() {
   const { address, isConnected } = useAccount();
   const [mine, setMine] = useState<bigint>();
   return (
-    <main>
-      <header>
-        <div className="logo">
-          Chog<span>Debt</span>
+    <>
+      <Header />
+      <section className="hero">
+        <div className="hero-main bg-lilac">
+          <FlowerField />
+          <h1 className="enter">
+            Favours, written down.
+            <span>Debts that stick to your Chog.</span>
+          </h1>
+          <p className="enter d1">Help a Chog holder, they owe your Chog. Pay back and your trust goes up. Ghost them and everyone sees.</p>
+          <div className="enter d2">
+            {isConnected ? (
+              <a href="#app" className="btn big">
+                Open my tab
+              </a>
+            ) : (
+              <ConnectButton.Custom>
+                {({ openConnectModal }) => (
+                  <button className="btn big" onClick={openConnectModal}>
+                    Connect wallet
+                  </button>
+                )}
+              </ConnectButton.Custom>
+            )}
+          </div>
         </div>
-        <nav className="hint">
-          <a href="/">Home</a> · <a href="/market">Debt market</a> · <a href="/leaderboard">Leaderboard</a> · <a href="/feed">Live feed</a>
-        </nav>
-        <ConnectButton chainStatus="icon" showBalance={false} />
-      </header>
+        <div className="hero-tiles">
+          <div className="tile bg-yellow enter d1">
+            <div className="tile-num">50</div>
+            <small>every Chog starts here</small>
+          </div>
+          <div className="tile bg-lime enter d2">
+            <span className="bob">
+              <Icon name="heart" size={96} />
+            </span>
+          </div>
+          <div className="tile bg-pink enter d3">
+            <span className="spin-slow">
+              <Icon name="daisy" size={110} />
+            </span>
+          </div>
+          <div className="tile bg-pink2 enter d4">
+            <div className="mini-stamp">DEADBEAT</div>
+            <small>the other option</small>
+          </div>
+        </div>
+      </section>
 
-      {!IS_CONFIGURED && <div className="banner">Heads up: NEXT_PUBLIC_CHOG_DEBT_ADDRESS isn't set, so there's no contract to talk to yet.</div>}
+      <main className="wrap">
+        {!IS_CONFIGURED && <div className="banner">No contract address set. Add NEXT_PUBLIC_CHOG_DEBT_ADDRESS to talk to the chain.</div>}
 
-      {!isConnected ? (
-        <section className="hero">
-          <h1>Your Chog never forgets.</h1>
-          <p>
-            Help another Chog holder, and your Chog writes them an IOU. They accept, they owe you. Call it in when you need it. Pay back and your
-            Chog's trust score goes up. Ghost someone and your Chog wears a <b>DEADBEAT</b> stamp for everyone to see.
-          </p>
-          <p className="hint">The debt lives on the NFT, not the wallet. Sell a deadbeat Chog and the buyer inherits the shame.</p>
-          <ConnectButton label="Connect wallet to open your tab" />
-        </section>
-      ) : (
-        <>
-          <ChogPicker owner={address!} selected={mine} onPick={setMine} />
-          {mine !== undefined ? (
-            <>
-              <div className="grid">
-                <TrustCard id={mine} />
-                <CreateIOU myId={mine} />
+        <Reveal>
+          <h2 className="section-title">How it works</h2>
+        </Reveal>
+        <div className="steps">
+          {STEPS.map((st, i) => (
+            <Reveal key={st.t} delay={i * 70}>
+              <div className={`step bg-${st.c}`}>
+                <Icon name={st.icon} />
+                <h3>{st.t}</h3>
+                <p>{st.d}</p>
               </div>
-              <Ledger myId={mine} />
-              <VouchCard myId={mine} />
-            </>
-          ) : (
-            <p className="hint center">Pick a Chog to see its tab.</p>
-          )}
-          <Lookup />
-        </>
-      )}
-      <footer>Built for Chogathon 2026 · Monad · keep your word, Chog.</footer>
-    </main>
+            </Reveal>
+          ))}
+        </div>
+        <Reveal>
+          <p className="note-line">Debts live on the NFT, not your wallet. Buy a deadbeat Chog and you inherit the stamp.</p>
+        </Reveal>
+
+        <div id="app" />
+        {!isConnected ? (
+          <Reveal>
+            <div className="card bg-yellow center">
+              <h3>Your tab is waiting</h3>
+              <p>Connect a wallet that holds a Chog to write and settle IOUs.</p>
+              <ConnectButton.Custom>
+                {({ openConnectModal }) => (
+                  <button className="btn" onClick={openConnectModal}>
+                    Connect wallet
+                  </button>
+                )}
+              </ConnectButton.Custom>
+            </div>
+            <Lookup />
+          </Reveal>
+        ) : (
+          <>
+            <Reveal>
+              <ChogPicker owner={address!} selected={mine} onPick={setMine} />
+            </Reveal>
+            {mine !== undefined ? (
+              <>
+                <div className="grid">
+                  <Reveal>
+                    <TrustCard id={mine} />
+                  </Reveal>
+                  <Reveal delay={80}>
+                    <CreateIOU myId={mine} />
+                  </Reveal>
+                </div>
+                <Reveal>
+                  <Ledger myId={mine} />
+                </Reveal>
+                <Reveal>
+                  <VouchCard myId={mine} />
+                </Reveal>
+              </>
+            ) : (
+              <p className="hint center">Pick a Chog to see its tab.</p>
+            )}
+            <Reveal>
+              <Lookup />
+            </Reveal>
+          </>
+        )}
+      </main>
+      <Footer />
+    </>
   );
 }

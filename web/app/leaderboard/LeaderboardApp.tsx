@@ -1,19 +1,19 @@
 "use client";
 import { useReadContract } from "wagmi";
-import { Shell } from "../Shell";
+import { PageHead, Shell } from "../Shell";
 import { ChogFace } from "../ChogApp";
 import { chogDebtAbi } from "@/lib/abi";
 import { DEBT_ADDRESS, IS_CONFIGURED } from "@/lib/config";
 
 type Row = { id: bigint; score: number; deadbeat: boolean; defaults: number };
 
-function Board({ title, rows, show }: { title: string; rows: Row[]; show: (r: Row) => string }) {
+function Board({ title, rows, show, color }: { title: string; rows: Row[]; show: (r: Row) => string; color: string }) {
   return (
-    <div className="card">
+    <div className={`card ${color}`}>
       <h3>{title}</h3>
       {rows.length === 0 && <p className="hint">Nobody here yet.</p>}
       {rows.map((r, i) => (
-        <a key={r.id.toString()} href={`/chog/${r.id}`} className="iou" style={{ color: "inherit", textDecoration: "none", alignItems: "center" }}>
+        <a key={r.id.toString()} href={`/chog/${r.id}`} className="iou lb-row" style={{ color: "inherit", textDecoration: "none", alignItems: "center" }}>
           <b style={{ width: 28 }}>{i + 1}</b>
           <ChogFace id={r.id} size={44} />
           <div className="iou-body">
@@ -27,7 +27,7 @@ function Board({ title, rows, show }: { title: string; rows: Row[]; show: (r: Ro
 }
 
 export default function LeaderboardApp() {
-  // One call is fine for hackathon-sized data; page this with offset/limit if it grows past a few thousand Chogs.
+  // One call is fine for small data; page this with offset/limit if it grows past a few thousand Chogs.
   const { data, isLoading } = useReadContract({
     address: DEBT_ADDRESS,
     abi: chogDebtAbi,
@@ -43,10 +43,11 @@ export default function LeaderboardApp() {
     .slice(0, 20);
   return (
     <Shell>
+      <PageHead title={<>Leaderboard<span>Who keeps their word.</span></>} sub="The most trusted Chogs, and the ones nobody should lend to." />
       {isLoading && <p className="hint">Counting Chogs…</p>}
       <div className="grid">
-        <Board title="💎 Most trusted Chogs" rows={trusted} show={(r) => `${r.score}/100 trust`} />
-        <Board title="💀 Worst deadbeats" rows={deadbeats} show={(r) => `${r.defaults} default${r.defaults === 1 ? "" : "s"}${r.deadbeat ? " · stamped" : " · redeemed"} · ${r.score}/100`} />
+        <Board title="💎 Most trusted Chogs" rows={trusted} color="bg-lime" show={(r) => `${r.score}/100 trust`} />
+        <Board title="💀 Worst deadbeats" rows={deadbeats} color="bg-lilac" show={(r) => `${r.defaults} default${r.defaults === 1 ? "" : "s"}${r.deadbeat ? " · stamped" : " · redeemed"} · ${r.score}/100`} />
       </div>
     </Shell>
   );

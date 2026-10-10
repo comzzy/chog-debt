@@ -3,7 +3,7 @@ import { useParams } from "next/navigation";
 import { useState } from "react";
 import { formatUnits } from "viem";
 import { useReadContract } from "wagmi";
-import { Shell } from "../../Shell";
+import { PageHead, Shell } from "../../Shell";
 import { STATUS, TrustCard, type IOU } from "../../ChogApp";
 import { FeedList } from "../../feed/FeedApp";
 import { chogDebtAbi } from "@/lib/abi";
@@ -35,8 +35,8 @@ export default function ReportApp() {
   const tweet = `https://x.com/intent/tweet?text=${encodeURIComponent(`Check Chog #${id}'s credit report before you lend it a favour 👀`)}&url=`;
   return (
     <Shell>
-      <div className="card">
-        <h3>📄 Credit report: Chog #{id.toString()}</h3>
+      <PageHead title={<>Chog #{id.toString()}<span>Credit report</span></>} sub="Check before you lend this Chog a favour." />
+      <div className="card bg-lime">
         <div className="actions">
           <button onClick={share}>{copied ? "Link copied" : "Share"}</button>
           <a href={tweet + (typeof window !== "undefined" ? encodeURIComponent(window.location.href) : "")} target="_blank" rel="noreferrer">
@@ -45,8 +45,8 @@ export default function ReportApp() {
         </div>
       </div>
       <TrustCard id={id} />
-      <div className="card">
-        <h3>📒 History</h3>
+      <div className="card bg-yellow">
+        <h3>History</h3>
         {rows.length === 0 && <p className="hint">No IOUs on record.</p>}
         {rows.map(({ id: iid, iou }) => (
           <div key={iid.toString()} className="iou">
@@ -64,8 +64,8 @@ export default function ReportApp() {
           </div>
         ))}
       </div>
-      <div className="card">
-        <h3>📡 Recent activity</h3>
+      <div className="card bg-lilac">
+        <h3>Recent activity</h3>
         <FeedList filter={id} />
       </div>
     </Shell>
