@@ -1,0 +1,14 @@
+.env
+.env.*
+!.env.example
+*.key
+*.pem
+secrets/
+keystore*/
+node_modules/
+.next/
+out/
+cache/
+broadcast/
+*.tsbuildinfo
+next-env.d.ts
