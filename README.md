@@ -4,8 +4,6 @@ ChogDebt keeps a record of favours between Chog holders. When I help you, my Cho
 
 Your Chog becomes your credit score.
 
-![ChogDebt home page](screenshots/home-desktop.png)
-
 ## Why I built it
 
 Communities run on favours. Someone reviews your code, makes you a banner, shills your mint, lends you gas. Mostly nobody writes it down, so the people who help get forgotten and the people who never return a favour face no consequences.
@@ -77,11 +75,6 @@ ChogDebt was deployed in block 112186774 ([deploy tx](https://monadvision.com/tx
 - **Live feed** (`/feed`): recent contract activity, read from events and updated as new ones arrive.
 
 The app plays short sound effects for each action, which you can turn off in the nav. The sounds are generated in the browser, not loaded from files.
-
-<p>
-  <img src="screenshots/leaderboard-desktop.png" alt="Leaderboard" width="64%" />
-  <img src="screenshots/credit-report-mobile.png" alt="Credit report on mobile" width="30%" />
-</p>
 
 ## Tech stack
 
