@@ -68,7 +68,7 @@ ChogDebt was deployed in block 112186774 ([deploy tx](https://monadvision.com/tx
 
 ## The app
 
-<!-- LIVE_URL -->
+**Live app:** [chog-debt.vercel.app](https://chog-debt.vercel.app)
 
 - **My tab** (`/`): connect a wallet, pick a Chog, and see its trust card. From there you can write IOUs, accept, repay, call in, mark defaults, list debts for sale, and vouch for other Chogs.
 - **Debt market** (`/market`): every IOU currently for sale, with the debtor's trust score next to it.
