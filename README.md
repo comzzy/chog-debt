@@ -1,124 +1,178 @@
-# Chog Debt
+# ChogDebt
 
-Chog Debt is a little app where Chog holders keep a tab on each other. When I help you out, my Chog writes you an IOU. You accept it, and now your Chog owes mine a favour. When I need it back I call it in, and you get a deadline. Pay up and your Chog's trust score goes up. Don't, and anyone can stamp your Chog as a deadbeat, in public, onchain.
+ChogDebt keeps a record of favours between Chog holders. When I help you, my Chog writes you an IOU. Once you accept it, your Chog owes mine, and that debt is stored onchain against both Chog NFTs. You can pay it back, I can call it in, and if you ignore a called-in debt past its deadline, your Chog gets a public DEADBEAT mark.
 
-The important bit: the debt and the reputation are stored against the Chog's token ID, not your wallet. The Chog is the credit score. If you sell a Chog with a deadbeat mark, the buyer gets the mark. If you buy a Chog that's owed three favours, you get to call them in.
+Your Chog becomes your credit score.
 
-I built it for Chogathon 2026 on Monad.
+![ChogDebt home page](screenshots/home-desktop.png)
+
+## Why I built it
+
+Communities run on favours. Someone reviews your code, makes you a banner, shills your mint, lends you gas. Mostly nobody writes it down, so the people who help get forgotten and the people who never return a favour face no consequences.
+
+I wanted that to have a memory. The Chog community already has a shared identity in the Chog NFT, so that's where the record lives. Anyone can look up a Chog and see whether it keeps its word.
 
 ## How it works
 
-1. **Write an IOU.** From your Chog to another Chog's token ID, with a short note ("reviewed your PR at 3am"). You can also ask for some $CHOG as collateral.
-2. **They accept it** (or reject it). If there's $CHOG on it, it's locked in the contract when they accept.
-3. **Call it in** whenever you want. You pick a deadline between 1 hour and 30 days.
-4. **They repay**, which just means they say "done". Any locked $CHOG goes to whoever holds the creditor Chog right now.
-5. **Or they don't.** Once the deadline passes, anyone can mark it defaulted. The debtor Chog gets the DEADBEAT stamp and the creditor gets the collateral.
-
-Paying back three debts after a default washes off the stamp. The default itself stays in the history.
-
-### v2 extras
-
-- **Selling debts.** If your Chog is owed a favour you can list the IOU for a price in $CHOG. Another Chog holder buys it, their Chog becomes the creditor (call-in rights and any locked collateral included), and the $CHOG goes to you. You can unlist any time. If you sell the Chog itself, the listing goes stale and can't be bought.
-- **Vouching.** A third Chog can back someone's IOU, optionally with some $CHOG. If the debt is repaid the stake comes back and the guarantor gets a little trust boost. If it defaults the stake goes to the creditor and the guarantor loses 15 trust. A vouch can only be pulled while the IOU is still waiting to be accepted.
-- **Streaks.** Repaying on time (before any deadline) builds a streak. 3 in a row earns "Reliable", 10 earns "Legend". Paying late or defaulting resets the streak, but badges you've earned stay.
-
-The website also has a leaderboard (most trusted and worst deadbeats), a shareable credit report at `/chog/<id>`, a debt market at `/market` and a live feed at `/feed` built from contract events.
+1. **Write an IOU.** Pick your Chog, enter the token ID of the Chog that owes you, and add a short note of up to 140 characters, like "designed your banner". You can also ask for some $CHOG as collateral.
+2. **They accept it.** Nothing counts until the other holder agrees. They can also reject it, or you can withdraw it before they answer. If you asked for collateral, it's locked in the contract when they accept.
+3. **Call it in.** Whenever you need the favour back, you call it in and choose a deadline between 1 hour and 30 days.
+4. **They repay.** The debtor marks the favour as returned. Any locked $CHOG goes to whoever holds the creditor Chog at that moment.
+5. **Or they default.** Once the deadline passes, anyone can mark the debt defaulted. The debtor's Chog gets the DEADBEAT mark, and the creditor gets the collateral. Repaying three later debts clears the mark, but the default stays in the record.
 
 ### Trust score
 
-Every Chog starts at 50 and it's clamped to 0-100:
+Every Chog starts at 50, on a scale of 0 to 100.
 
-- +8 for each debt repaid, +2 more if it was repaid after being called in
-- +3 for each favour you gave that got accepted
-- -25 for each default, and -10 while the deadbeat stamp is on
-- +2 for each vouch that worked out, -15 for each one that blew up
-- +5 for the Reliable badge, +10 more for Legend
+| What happened | Points |
+| --- | --- |
+| Repaid a debt | +8 (+2 more if it was repaid after being called in) |
+| Gave a favour that was accepted | +3 |
+| A Chog you vouched for repaid | +2 |
+| Reliable / Legend streak badge | +5 / +10 |
+| Defaulted | -25 |
+| A Chog you vouched for defaulted | -15 |
+| Currently marked as a deadbeat | -10 |
 
-The app also hands out badges like "Good for it", "Helpful Chog", "Pays under pressure" and "Redeemed".
+### Streak badges
 
-### Rules the contract enforces
+Each on-time repayment adds to a streak. A repayment is on time if the debt was never called in, or it was paid before the deadline. Three in a row earns **Reliable** and ten earns **Legend**. A late payment or a default resets the streak to zero, but badges you've already earned stay on the Chog.
 
-- Only the wallet that currently owns a Chog (`ownerOf`) can act for it.
-- No IOUs to yourself: you can't use the same Chog, or another Chog in the same wallet. That stops the easiest way to farm trust.
-- Memos are 1-140 characters.
-- The owner can pause new IOUs, accepts and call-ins. Repay and default still work while paused, so nobody gets stuck. Ownership moves in two steps (`transferOwnership`, then `acceptOwnership`).
+### Debt trading
 
-## Addresses (Monad mainnet, chain 143)
+If your Chog is owed a favour, you can list that IOU for a price in $CHOG. The buyer's Chog becomes the creditor. That means they get the right to call it in, and any collateral if it defaults. The seller receives the $CHOG. The debtor can't buy their own debt, and if the seller transfers the creditor Chog while the IOU is listed, the listing can no longer be bought.
 
-- Chog Genesis NFT (ERC-721, 1969 supply): `0xc96d31F8626c6D03Fae5dCD3d61e3FB9F4a73763`. I took this from mint.chog.xyz and checked it onchain.
-- $CHOG token: `0x350035555E10d9AfAF1566AaebfCeD5BA6C27777`
-- ChogDebt v1: `0x5591bb48433e82d653cb663082c21de087b4d41b` (v2 with trading, vouching and streaks is not deployed yet)
+### Guarantors
 
-Monad RPCs: mainnet `https://rpc.monad.xyz` (chain 143), testnet `https://testnet-rpc.monad.xyz` (chain 10143).
+A third Chog can vouch for someone else's IOU, and can also stake $CHOG behind it. If the debt is repaid, the guarantor gets the stake back and a small trust boost. If it defaults, the stake goes to the creditor and the guarantor loses 15 trust. A vouch can only be withdrawn before the debtor accepts the IOU.
 
-## Repo layout
+### Why the debt lives on the NFT
+
+Every debt and every score is tied to the Chog's token ID, not to a wallet address. This matters for three reasons:
+
+- A wallet is cheap to replace and a Chog isn't, so you can't escape a bad reputation by moving to a new wallet.
+- If you sell a Chog, its debts, trust score and any DEADBEAT mark go with it. Buyers will check a Chog's credit report before they buy it.
+- A Chog with a good record is worth more than one without, which gives everyone a reason to keep their word.
+
+Only the wallet that currently holds a Chog (`ownerOf`) can act for it. You can't write an IOU to your own Chog, or to another Chog held in the same wallet.
+
+## Live contracts (Monad mainnet, chain 143)
+
+| | Address |
+| --- | --- |
+| ChogDebt v2 | [`0x88e38085753f41cd2ba1248bf9ca30b38768f4f1`](https://monadvision.com/address/0x88e38085753f41cd2ba1248bf9ca30b38768f4f1) (source verified) |
+| Chog Genesis NFT | [`0xc96d31F8626c6D03Fae5dCD3d61e3FB9F4a73763`](https://monadvision.com/address/0xc96d31F8626c6D03Fae5dCD3d61e3FB9F4a73763) |
+| $CHOG token | [`0x350035555E10d9AfAF1566AaebfCeD5BA6C27777`](https://monadvision.com/address/0x350035555E10d9AfAF1566AaebfCeD5BA6C27777) |
+
+ChogDebt was deployed in block 112186774 ([deploy tx](https://monadvision.com/tx/0x471e49d24ff4435da91b85f2efe33872fcb404eaac1895219c8781ef06c93e5d)). The contract is owned by `0x6c245eAF8F11b05d4220A44CB3F3E8490e5b2Ec1`. The owner can only pause new IOUs, acceptances, call-ins and trades. Repaying and marking defaults keep working while it's paused, so nobody gets stuck. The owner has no way to move anyone's funds.
+
+## The app
+
+<!-- LIVE_URL -->
+
+- **My tab** (`/`): connect a wallet, pick a Chog, and see its trust card. From there you can write IOUs, accept, repay, call in, mark defaults, list debts for sale, and vouch for other Chogs.
+- **Debt market** (`/market`): every IOU currently for sale, with the debtor's trust score next to it.
+- **Leaderboard** (`/leaderboard`): the most trusted Chogs, and the worst deadbeats.
+- **Credit report** (`/chog/<id>`): a shareable page for any Chog, with its score, badges, streak, history and recent activity.
+- **Live feed** (`/feed`): recent contract activity, read from events and updated as new ones arrive.
+
+The app plays short sound effects for each action, which you can turn off in the nav. The sounds are generated in the browser, not loaded from files.
+
+<p>
+  <img src="screenshots/leaderboard-desktop.png" alt="Leaderboard" width="64%" />
+  <img src="screenshots/credit-report-mobile.png" alt="Credit report on mobile" width="30%" />
+</p>
+
+## Tech stack
+
+- **Contracts:** Solidity 0.8.24 and Foundry. No external dependencies besides forge-std.
+- **Web:** Next.js 15 (App Router), TypeScript, wagmi, viem, RainbowKit and plain CSS. Animations are CSS-only and respect the reduced-motion setting.
+- **Chain:** Monad mainnet.
+
+## Project structure
 
 ```
-contracts/   Foundry project (ChogDebt.sol, tests, deploy script)
-web/         Next.js + wagmi + RainbowKit app
+contracts/
+  src/ChogDebt.sol         the contract
+  test/ChogDebt.t.sol      core lifecycle tests
+  test/ChogDebtV2.t.sol    trading, guarantors, streaks, leaderboard views
+  test/mocks/Mocks.sol     mock ERC-721 and ERC-20
+  script/Deploy.s.sol      deploy script
+web/
+  app/                     pages (home, market, leaderboard, feed, chog/[id])
+  lib/                     chain config, ABI, event feed, sound effects
+screenshots/
 ```
 
-## Contracts
+## Running it locally
 
-You need [Foundry](https://getfoundry.sh).
+### Contracts
+
+You'll need [Foundry](https://getfoundry.sh).
 
 ```sh
 cd contracts
 forge build
-forge test -vv
+forge test
 ```
 
-The tests use a mock ERC-721 and a mock ERC-20. They cover the whole lifecycle, the permission checks, collateral payouts, the deadbeat and redemption logic, and debts following the NFT when it's transferred.
+There are 63 tests, and all of them pass. They cover:
 
-## Web app
+- the full IOU lifecycle and who's allowed to do what
+- collateral payouts
+- deadbeat marks and redemption
+- debts, credit and marks moving with the NFT when it's transferred
+- debt trading, including stale listings and price limits
+- guarantor stakes and penalties
+- streaks and badges
+- the leaderboard and credit report views
+
+### Web app
 
 ```sh
 cd web
-cp .env.example .env.local   # then fill in NEXT_PUBLIC_CHOG_DEBT_ADDRESS
+cp .env.example .env.local
 npm install
-npm run dev                  # or: npm run build && npm start
+npm run dev
 ```
 
-Settings:
-
-| var | what |
+| Variable | Value |
 | --- | --- |
-| `NEXT_PUBLIC_CHAIN_ID` | `143` mainnet or `10143` testnet |
-| `NEXT_PUBLIC_RPC_URL` | optional RPC override |
-| `NEXT_PUBLIC_CHOG_DEBT_ADDRESS` | the deployed ChogDebt contract |
-| `NEXT_PUBLIC_CHOG_NFT_ADDRESS` | Chog NFT (defaults to Chog Genesis) |
-| `NEXT_PUBLIC_CHOG_TOKEN_ADDRESS` | $CHOG (defaults to mainnet $CHOG) |
-| `NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID` | from cloud.reown.com, needed for mobile wallets |
+| `NEXT_PUBLIC_CHAIN_ID` | `143` (mainnet) or `10143` (testnet) |
+| `NEXT_PUBLIC_RPC_URL` | `https://rpc.monad.xyz` |
+| `NEXT_PUBLIC_CHOG_DEBT_ADDRESS` | `0x88e38085753f41cd2ba1248bf9ca30b38768f4f1` |
+| `NEXT_PUBLIC_CHOG_NFT_ADDRESS` | `0xc96d31F8626c6D03Fae5dCD3d61e3FB9F4a73763` |
+| `NEXT_PUBLIC_CHOG_TOKEN_ADDRESS` | `0x350035555E10d9AfAF1566AaebfCeD5BA6C27777` |
+| `NEXT_PUBLIC_DEPLOY_BLOCK` | `112186774` |
+| `NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID` | your own ID from cloud.reown.com |
 
-The Chog contract can't list the tokens in a wallet, so the app asks you which token IDs are yours, then checks `ownerOf` before it lets you use one.
+Some things to know about how the app reads the chain:
 
-## Deploying
+- The Chog contract has no function that lists the tokens in a wallet, so the app asks you for your token IDs and checks `ownerOf` on each one.
+- The public RPC returns event logs for at most 100 blocks per request, so the live feed scans back about 3000 blocks and then listens for new events.
 
-The deploy script reads `CHOG_NFT` and `CHOG_TOKEN` (optional) from the environment. It doesn't read a private key itself. Foundry signs with whatever account you pass on the command line.
+## Deploying your own
 
-The deployer wallet is `0x147D1285EdE460617E9CB9AA849E2290f1917c33`. Its key sits outside this repo, in a `cast wallet new --json` file (`.data[0].private_key`). Don't paste it anywhere. Import it once into Foundry's encrypted keystore, which asks you for a password:
-
-```sh
-cast wallet import chogdebt-deployer \
-  --private-key "$(jq -r '.data[0].private_key' /home/box/secrets/chogdebt-deployer.json)"
-```
-
-Then fund the address with some MON and deploy (try testnet first):
+The deploy script reads `CHOG_NFT` and `CHOG_TOKEN` from the environment. It never handles a private key itself. Use an encrypted Foundry keystore:
 
 ```sh
+cast wallet import my-deployer --interactive
 cd contracts
-export CHOG_NFT=0xc96d31F8626c6D03Fae5dCD3d61e3FB9F4a73763
-export CHOG_TOKEN=0x350035555E10d9AfAF1566AaebfCeD5BA6C27777
-forge script script/Deploy.s.sol --rpc-url https://testnet-rpc.monad.xyz \
-  --account chogdebt-deployer --sender 0x147D1285EdE460617E9CB9AA849E2290f1917c33 --broadcast
+CHOG_NFT=0xc96d31F8626c6D03Fae5dCD3d61e3FB9F4a73763 \
+CHOG_TOKEN=0x350035555E10d9AfAF1566AaebfCeD5BA6C27777 \
+forge script script/Deploy.s.sol --rpc-url https://rpc.monad.xyz \
+  --account my-deployer --broadcast
 ```
 
-A dry run of v2 against mainnet estimated about 5.5M gas. Monad charges for the gas limit, so budget roughly 0.6 MON at 100-ish gwei, plus headroom.
+A deploy costs roughly 5.5M gas. Monad charges for the gas limit you set rather than the gas actually used, so keep about 0.6 MON in the wallet.
 
-For the live feed, set `NEXT_PUBLIC_DEPLOY_BLOCK` to the deploy block. The public RPC only returns logs for 100 blocks per call, so the feed scans back `NEXT_PUBLIC_FEED_LOOKBACK_BLOCKS` (default 3000, about 15 minutes) and then listens for new events.
+## What's next
 
-Real Chogs only exist on mainnet. On testnet you'll need to deploy a test ERC-721 (and ERC-20) and point `CHOG_NFT` / `CHOG_TOKEN` at those.
+- A small indexer so the feed and leaderboard can show full history, not just recent blocks.
+- Notifications when one of your debts gets called in.
+- Group IOUs, where one Chog owes several others for a group favour.
+- Letting the debtor and creditor agree to renegotiate a deadline.
 
 ## Licence
 
-MIT
+MIT. See [LICENSE](LICENSE).
