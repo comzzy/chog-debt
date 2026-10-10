@@ -138,6 +138,7 @@ const LINKS = [
   { href: "/market", label: "Debt market" },
   { href: "/leaderboard", label: "Leaderboard" },
   { href: "/feed", label: "Live feed" },
+  { href: "/docs", label: "Docs" },
 ];
 
 export function Header() {
@@ -153,7 +154,7 @@ export function Header() {
       </button>
       <nav className={open ? "open" : ""}>
         {LINKS.map((l) => (
-          <a key={l.href} href={l.href} className={path === l.href ? "here" : ""}>
+          <a key={l.href} href={l.href} className={path === l.href || (l.href === "/docs" && path?.startsWith("/docs")) ? "here" : ""}>
             {l.label}
           </a>
         ))}
@@ -172,6 +173,12 @@ export function Footer() {
     <footer className="foot">
       <LogoMark size={28} />
       <span>Keep your word. Your Chog remembers.</span>
+      <nav className="foot-links">
+        <a href="/docs">Docs</a>
+        <a href="/docs/faq">FAQ</a>
+        <a href="/docs/contracts">Contracts</a>
+        <a href="https://github.com/comzzy/chog-debt" target="_blank" rel="noreferrer">GitHub</a>
+      </nav>
     </footer>
   );
 }

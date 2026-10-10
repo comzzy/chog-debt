@@ -1,5 +1,4 @@
 "use client";
-import { ConnectButton } from "@rainbow-me/rainbowkit";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { SFX_FOR, play } from "@/lib/sfx";
 import { formatUnits, parseUnits, type Address } from "viem";
@@ -276,7 +275,15 @@ function VouchCard({ myId }: { myId: bigint }) {
         <button disabled={!ok || tx.busy} onClick={() => tx.send({ address: DEBT_ADDRESS, abi: chogDebtAbi, functionName: "vouch", args: [BigInt(iouId), myId, amt] })}>
           I vouch for them
         </button>
-      )}
+      )}{" "}
+      <button
+        className="ghost"
+        disabled={!ok || tx.busy}
+        title="Only works while the IOU is still waiting to be accepted"
+        onClick={() => tx.send({ address: DEBT_ADDRESS, abi: chogDebtAbi, functionName: "withdrawVouch", args: [BigInt(iouId)] })}
+      >
+        Withdraw my vouch
+      </button>
       <TxNote tx={tx} />
     </div>
   );
@@ -310,7 +317,7 @@ function IOURow({ id, iou, mine }: { id: bigint; iou: IOU; mine: bigint }) {
     abi: erc20Abi,
     functionName: "allowance",
     args: address ? [address, DEBT_ADDRESS] : undefined,
-    query: { enabled: !!address && iou.chogAmount > 0n && iou.status === 1 && !iAmCreditor },
+    query: { enabled: !!address && iou.chogAmount > 0n && iou.status === 1 && !iAmCreditor, refetchInterval: 5000 },
   });
   const call = (functionName: "accept" | "repay" | "cancel" | "markDefault") =>
     tx.send({ address: DEBT_ADDRESS, abi: chogDebtAbi, functionName, args: [id] });
@@ -576,24 +583,17 @@ export default function ChogApp() {
         <div className="hero-main bg-lilac">
           <FlowerField />
           <h1 className="enter">
-            Favours, written down.
-            <span>Debts that stick to your Chog.</span>
+            Your Chog keeps score.
+            <span>Help a holder, log the favour, and let trust build where everyone can see it.</span>
           </h1>
-          <p className="enter d1">Help a Chog holder, they owe your Chog. Pay back and your trust goes up. Ghost them and everyone sees.</p>
-          <div className="enter d2">
-            {isConnected ? (
-              <a href="#app" className="btn big">
-                Open my tab
-              </a>
-            ) : (
-              <ConnectButton.Custom>
-                {({ openConnectModal }) => (
-                  <button className="btn big" onClick={openConnectModal}>
-                    Connect wallet
-                  </button>
-                )}
-              </ConnectButton.Custom>
-            )}
+          <p className="enter d1">Favours between Chog holders become IOUs on the NFT. Pay them back and your trust score climbs. Ignore a called-in debt and your Chog gets marked.</p>
+          <div className="enter d2 hero-actions">
+            <a href="#how" className="btn big">
+              See how it works
+            </a>
+            <a href="/docs" className="btn big ghost-btn">
+              Read the docs
+            </a>
           </div>
         </div>
         <div className="hero-tiles">
@@ -622,7 +622,7 @@ export default function ChogApp() {
         {!IS_CONFIGURED && <div className="banner">No contract address set. Add NEXT_PUBLIC_CHOG_DEBT_ADDRESS to talk to the chain.</div>}
 
         <Reveal>
-          <h2 className="section-title">How it works</h2>
+          <h2 className="section-title" id="how">How it works</h2>
         </Reveal>
         <div className="steps">
           {STEPS.map((st, i) => (
@@ -639,19 +639,38 @@ export default function ChogApp() {
           <p className="note-line">Debts live on the NFT, not your wallet. Buy a deadbeat Chog and you inherit the stamp.</p>
         </Reveal>
 
+        <Reveal>
+          <section className="why-nft">
+            <div className="why-copy bg-yellow">
+              <h2>Why it lives on the NFT</h2>
+              <p>Wallets are free to replace. Chogs aren't. Every debt, score and mark is tied to the token ID, so a bad record can't be dodged by switching wallets, and a good one adds to what your Chog is worth.</p>
+              <p>Sell a Chog and its history goes with it. Buyers can check its credit report first.</p>
+            </div>
+            <div className="why-tiles">
+              <div className="bg-lime"><b>0–100</b><span>trust score, starts at 50</span></div>
+              <div className="bg-pink2"><b>3</b><span>repayments to clear a DEADBEAT mark</span></div>
+              <div className="bg-lilac"><b>1h–30d</b><span>call-in deadlines</span></div>
+              <div className="bg-yellow"><b>10</b><span>on-time in a row for Legend</span></div>
+            </div>
+          </section>
+        </Reveal>
+        <Reveal>
+          <div className="docs-strip bg-lime">
+            <div>
+              <b>New here?</b> The docs walk through every feature step by step, with the exact rules.
+            </div>
+            <a className="btn" href="/docs/getting-started">
+              Getting started
+            </a>
+          </div>
+        </Reveal>
+
         <div id="app" />
         {!isConnected ? (
           <Reveal>
             <div className="card bg-yellow center">
               <h3>Your tab is waiting</h3>
-              <p>Connect a wallet that holds a Chog to write and settle IOUs.</p>
-              <ConnectButton.Custom>
-                {({ openConnectModal }) => (
-                  <button className="btn" onClick={openConnectModal}>
-                    Connect wallet
-                  </button>
-                )}
-              </ConnectButton.Custom>
+              <p>Connect a wallet that holds a Chog using the Connect Wallet button at the top of the page.</p>
             </div>
             <Lookup />
           </Reveal>
