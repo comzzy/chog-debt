@@ -52,7 +52,7 @@ img { display: block; }
 .menu-btn.open span:nth-child(3) { transform: translateY(-8.5px) rotate(-45deg); }
 
 /* ---------- hero */
-.hero { display: grid; grid-template-columns: 1.15fr 1fr; min-height: calc(100vh - 70px); max-height: 760px; border-bottom: 3px solid var(--ink); }
+.hero { display: grid; grid-template-columns: 1.15fr 1fr; min-height: min(calc(100vh - 70px), 640px); border-bottom: 3px solid var(--ink); }
 .hero-main { position: relative; overflow: hidden; padding: clamp(32px, 6vw, 80px); display: flex; flex-direction: column; justify-content: center; }
 .hero-main > *:not(.flower-field) { position: relative; z-index: 1; }
 .flower-field { position: absolute; inset: 0; }
