@@ -1,4 +1,5 @@
 "use client";
+import { useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { SFX_FOR, play } from "@/lib/sfx";
 import { formatUnits, parseUnits, type Address } from "viem";
@@ -31,7 +32,20 @@ type Rep = {
   deadbeat: boolean;
 };
 
-const ipfs = (u: string) => (u.startsWith("ipfs://") ? `https://ipfs.io/ipfs/${u.slice(7)}` : u);
+// ipfs.io rate-limits hard (429 with no CORS header), so try a few gateways in order.
+const GATEWAYS = ["https://gateway.pinata.cloud/ipfs/", "https://ipfs.io/ipfs/", "https://dweb.link/ipfs/"];
+const ipfs = (u: string, g = 0) => (u.startsWith("ipfs://") ? GATEWAYS[g] + u.slice(7) : u);
+const metaCache = new Map<string, Promise<{ image?: string } | null>>();
+function fetchMeta(uri: string) {
+  if (!metaCache.has(uri)) {
+    const tryAt = (g: number): Promise<{ image?: string } | null> =>
+      fetch(ipfs(uri, g))
+        .then((r) => (r.ok ? r.json() : Promise.reject()))
+        .catch(() => (uri.startsWith("ipfs://") && g + 1 < GATEWAYS.length ? tryAt(g + 1) : null));
+    metaCache.set(uri, tryAt(0));
+  }
+  return metaCache.get(uri)!;
+}
 
 function useChogImage(id?: bigint) {
   const { data: uri } = useReadContract({
@@ -45,8 +59,7 @@ function useChogImage(id?: bigint) {
   useEffect(() => {
     if (!uri) return;
     let live = true;
-    fetch(ipfs(uri))
-      .then((r) => r.json())
+    fetchMeta(uri)
       .then((m) => live && m?.image && setImg(ipfs(m.image)))
       .catch(() => {});
     return () => {
@@ -173,7 +186,10 @@ export function useTx() {
   const [err, setErr] = useState<string>();
   const receipt = useWaitForTransactionReceipt({ hash });
   const fn = useRef<string>("");
+  const qc = useQueryClient();
   useEffect(() => {
+    // refresh every read (allowances, balances, IOUs) as soon as a tx lands, not on the next poll
+    if (receipt.isSuccess) qc.invalidateQueries();
     if (receipt.isSuccess) play(receipt.data?.status === "reverted" ? "womp" : (SFX_FOR[fn.current] ?? "pop"));
   }, [receipt.isSuccess, receipt.data]);
   const send = async (args: Parameters<typeof writeContractAsync>[0]) => {
