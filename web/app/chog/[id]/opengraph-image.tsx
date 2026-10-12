@@ -3,6 +3,7 @@ import { chogImagePng, readReport } from "@/lib/report";
 
 export const runtime = "nodejs";
 export const revalidate = 300;
+export const maxDuration = 30;
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 export const alt = "Chog credit report on ChogDebt";
@@ -23,13 +24,14 @@ export default async function Image({ params }: { params: Promise<{ id: string }
   const { id: raw } = await params;
   const valid = /^\d{1,6}$/.test(raw);
   const id = valid ? BigInt(raw) : 0n;
-  const [r, img, f9, f7] = await Promise.all([
+  const [r, pic, f9, f7] = await Promise.all([
     valid ? readReport(id).catch(() => null) : null,
-    valid ? chogImagePng(id, 380) : undefined,
+    valid ? chogImagePng(id, 380) : Promise.resolve<{ src?: string; err?: string }>({ err: "invalid id" }),
     font(900),
     font(700),
   ]);
   const fonts = [f9 && { name: "Poppins", data: f9, weight: 900 as const }, f7 && { name: "Poppins", data: f7, weight: 700 as const }].filter(Boolean) as { name: string; data: ArrayBuffer; weight: 900 | 700 }[];
+  const img = pic.src;
   const score = r?.score ?? 50;
   const box = (bg: string) => ({ display: "flex", background: bg, border: `5px solid ${INK}` });
   return new ImageResponse(
@@ -64,6 +66,6 @@ export default async function Image({ params }: { params: Promise<{ id: string }
         </div>
       </div>
     ),
-    { ...size, fonts: fonts.length ? fonts : undefined },
+    { ...size, fonts: fonts.length ? fonts : undefined, headers: { "x-chog-image": img ? "ok" : (pic.err ?? "").replace(/[^\x20-\x7e]/g, "") || "none" } },
   );
 }
