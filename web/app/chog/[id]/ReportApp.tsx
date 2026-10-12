@@ -21,27 +21,43 @@ export default function ReportApp() {
     args: [id],
     query: { enabled: IS_CONFIGURED && valid },
   });
+  const { data: scoreRaw } = useReadContract({
+    address: DEBT_ADDRESS,
+    abi: chogDebtAbi,
+    functionName: "trustScore",
+    args: [id],
+    query: { enabled: IS_CONFIGURED && valid },
+  });
+  const score = scoreRaw === undefined ? undefined : Number(scoreRaw);
   if (!valid) return <Shell><p className="err">That's not a Chog token ID.</p></Shell>;
   const rows = data ? data[0].map((iid, i) => ({ id: iid, iou: data[1][i] as IOU })).reverse() : [];
+  const url = typeof window !== "undefined" ? `${window.location.origin}/chog/${id}` : "";
   const share = async () => {
-    const url = window.location.href;
-    const text = `Chog #${id} credit report on Chog Debt`;
+    const text = `Chog #${id} credit report on ChogDebt`;
     if (navigator.share) await navigator.share({ title: text, url }).catch(() => {});
     else {
       await navigator.clipboard.writeText(url);
       setCopied(true);
     }
   };
-  const tweet = `https://x.com/intent/tweet?text=${encodeURIComponent(`Check Chog #${id}'s credit report before you lend it a favour 👀`)}&url=`;
+  const xText = score === undefined ? `Chog #${id}'s credit report on ChogDebt` : `Chog #${id} has a trust score of ${score}/100 on ChogDebt`;
+  const tweet = `https://x.com/intent/tweet?text=${encodeURIComponent(xText)}&url=${encodeURIComponent(url)}`;
+  const card = `/chog/${id}/opengraph-image`;
   return (
     <Shell>
       <PageHead title={<>Chog #{id.toString()}<span>Credit report</span></>} sub="Check before you lend this Chog a favour." />
-      <div className="card bg-lime">
-        <div className="actions">
-          <button onClick={share}>{copied ? "Link copied" : "Share"}</button>
-          <a href={tweet + (typeof window !== "undefined" ? encodeURIComponent(window.location.href) : "")} target="_blank" rel="noreferrer">
-            <button className="ghost">Post on X</button>
-          </a>
+      <div className="card bg-lime share-card">
+        <a href={card} target="_blank" rel="noreferrer" className="share-preview">
+          <img src={card} alt={`Chog #${id} credit report card`} width={1200} height={630} />
+        </a>
+        <div className="share-side">
+          <h3>Share this report</h3>
+          <p>The card shows this Chog's live trust score, streak and any DEADBEAT stamp.</p>
+          <div className="share-btns">
+            <a className="btn" href={tweet} target="_blank" rel="noreferrer">Share on X</a>
+            <a className="btn ghost-btn" href={card} download={`chog-${id}-credit-report.png`}>Download card</a>
+            <button className="ghost" onClick={share}>{copied ? "Link copied" : "Copy link"}</button>
+          </div>
         </div>
       </div>
       <TrustCard id={id} />

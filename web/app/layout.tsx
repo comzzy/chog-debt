@@ -3,6 +3,7 @@ import "./globals.css";
 import { Providers } from "./providers";
 
 export const metadata: Metadata = {
+  metadataBase: new URL("https://chog-debt.vercel.app"),
   title: "ChogDebt: favours between Chogs",
   description: "Write favours as IOUs between Chog NFTs. Trust scores, deadbeat marks and a debt market on Monad.",
 };
