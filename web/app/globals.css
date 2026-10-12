@@ -357,3 +357,25 @@ html { background: var(--lilac-l); }
   .docs-nav { display: none; }
   .docs-side.open .docs-nav { display: flex; animation: menu .25s ease both; }
 }
+
+/* ---------- live stats strip */
+.live-stats { display: grid; grid-template-columns: auto repeat(4, 1fr); border: 3px solid var(--ink); box-shadow: 5px 5px 0 var(--ink); margin: 8px 0 12px; }
+.ls-label { display: flex; align-items: center; gap: 8px; padding: 0 18px; background: var(--ink); color: var(--lime); font-weight: 900; font-size: 13px; text-transform: uppercase; letter-spacing: .6px; white-space: nowrap; }
+.ls-dot { width: 9px; height: 9px; border-radius: 50%; background: var(--lime); animation: lsPulse 1.6s ease-in-out infinite; }
+@keyframes lsPulse { 50% { opacity: .3; } }
+.ls-cell { display: flex; align-items: baseline; gap: 10px; padding: 14px 18px; border-left: 3px solid var(--ink); min-width: 0; }
+.ls-cell b { font-size: 30px; font-weight: 900; line-height: 1; font-variant-numeric: tabular-nums; }
+.ls-cell span { font-size: 12px; font-weight: 800; text-transform: uppercase; letter-spacing: .4px; }
+@media (max-width: 900px) {
+  .live-stats { grid-template-columns: repeat(4, 1fr); }
+  .ls-label { grid-column: 1 / -1; padding: 8px 14px; }
+  .ls-cell { flex-direction: column; gap: 4px; padding: 12px 14px; border-top: 3px solid var(--ink); }
+  .ls-cell:nth-child(2) { border-left: 0; }
+}
+@media (max-width: 560px) {
+  .live-stats { grid-template-columns: 1fr 1fr; }
+  .ls-cell:nth-child(4) { border-left: 0; }
+  .ls-cell b { font-size: 26px; }
+}
+@media (prefers-reduced-motion: reduce) { .ls-dot { animation: none; } }
+

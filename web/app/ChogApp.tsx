@@ -6,6 +6,7 @@ import { formatUnits, parseUnits, type Address } from "viem";
 import { useAccount, useReadContract, useReadContracts, useWaitForTransactionReceipt, useWriteContract } from "wagmi";
 import { chogDebtAbi, erc20Abi, erc721Abi } from "@/lib/abi";
 import { Footer, FlowerField, Header, Reveal } from "./Shell";
+import { LiveStats } from "./LiveStats";
 import { CHOG_NFT, CHOG_TOKEN, DEBT_ADDRESS, IS_CONFIGURED, chain } from "@/lib/config";
 
 export const STATUS = ["None", "Waiting for them", "Owed", "Called in!", "Repaid", "Defaulted", "Cancelled"] as const;
@@ -637,6 +638,7 @@ export default function ChogApp() {
       <main className="wrap">
         {!IS_CONFIGURED && <div className="banner">No contract address set. Add NEXT_PUBLIC_CHOG_DEBT_ADDRESS to talk to the chain.</div>}
 
+        <LiveStats />
         <Reveal>
           <h2 className="section-title" id="how">How it works</h2>
         </Reveal>
