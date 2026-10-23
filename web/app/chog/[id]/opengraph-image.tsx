@@ -66,6 +66,6 @@ export default async function Image({ params }: { params: Promise<{ id: string }
         </div>
       </div>
     ),
-    { ...size, fonts: fonts.length ? fonts : undefined, headers: { "x-chog-image": img ? "ok" : (pic.err ?? "").replace(/[^\x20-\x7e]/g, "") || "none" } },
+    { ...size, fonts: fonts.length ? fonts : undefined },
   );
 }
